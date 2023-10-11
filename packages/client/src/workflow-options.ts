@@ -39,6 +39,10 @@ export interface WorkflowOptions extends CommonWorkflowOptions {
   followRuns?: boolean;
 }
 
+export interface WorkflowUpdateOptions {
+  readonly id?: string;
+}
+
 export type WorkflowSignalWithStartOptions<SignalArgs extends any[] = []> = SignalArgs extends [any, ...any[]]
   ? WorkflowSignalWithStartOptionsWithArgs<SignalArgs>
   : WorkflowSignalWithStartOptionsWithoutArgs<SignalArgs>;

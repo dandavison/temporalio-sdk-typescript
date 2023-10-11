@@ -13,7 +13,7 @@ import {
   TerminateWorkflowExecutionResponse,
   WorkflowExecution,
 } from './types';
-import { CompiledWorkflowOptions } from './workflow-options';
+import { CompiledWorkflowOptions, WorkflowUpdateOptions } from './workflow-options';
 
 export { Next, Headers };
 
@@ -23,6 +23,16 @@ export interface WorkflowStartInput {
   readonly workflowType: string;
   readonly headers: Headers;
   readonly options: CompiledWorkflowOptions;
+}
+
+/** Input for WorkflowClientInterceptor.update */
+export interface WorkflowUpdateInput {
+  readonly updateName: string;
+  readonly args: unknown[];
+  readonly workflowExecution: WorkflowExecution;
+  readonly firstExecutionRunId?: string;
+  readonly headers: Headers;
+  readonly options?: WorkflowUpdateOptions;
 }
 
 /** Input for WorkflowClientInterceptor.signal */
@@ -81,6 +91,10 @@ export interface WorkflowClientInterceptor {
    * {@link signalWithStart} most likely needs to be implemented too
    */
   start?: (input: WorkflowStartInput, next: Next<this, 'start'>) => Promise<string /* runId */>;
+  /**
+   * Intercept a service call to updateWorkflowExecution
+   */
+  update?: (input: WorkflowUpdateInput, next: Next<this, 'update'>) => Promise<unknown>;
   /**
    * Intercept a service call to signalWorkflowExecution
    *

@@ -10,6 +10,7 @@ import {
   RetryState,
   searchAttributePayloadConverter,
   SignalDefinition,
+  UpdateDefinition,
   TerminatedFailure,
   TimeoutFailure,
   TimeoutType,
@@ -22,7 +23,7 @@ import {
 } from '@temporalio/common';
 import { composeInterceptors } from '@temporalio/common/lib/interceptors';
 import { History } from '@temporalio/common/lib/proto-utils';
-import { SymbolBasedInstanceOfError } from '@temporalio/common/lib/type-helpers';
+import { SymbolBasedInstanceOfError, WithArgs } from '@temporalio/common/lib/type-helpers';
 import {
   decodeArrayFromPayloads,
   decodeFromPayloadsAtIndex,
@@ -32,7 +33,13 @@ import {
   filterNullAndUndefined,
 } from '@temporalio/common/lib/internal-non-workflow';
 import { temporal } from '@temporalio/proto';
-import { ServiceError, WorkflowContinuedAsNewError, WorkflowFailedError, isGrpcServiceError } from './errors';
+import {
+  ServiceError,
+  WorkflowContinuedAsNewError,
+  WorkflowFailedError,
+  WorkflowUpdateFailedError,
+  isGrpcServiceError,
+} from './errors';
 import {
   WorkflowCancelInput,
   WorkflowClientInterceptor,
@@ -43,6 +50,7 @@ import {
   WorkflowSignalWithStartInput,
   WorkflowStartInput,
   WorkflowTerminateInput,
+  WorkflowUpdateInput,
 } from './interceptors';
 import {
   DescribeWorkflowExecutionResponse,
@@ -60,6 +68,7 @@ import {
   WorkflowOptions,
   WorkflowSignalWithStartOptions,
   WorkflowStartOptions,
+  WorkflowUpdateOptions,
 } from './workflow-options';
 import { executionInfoFromRaw, rethrowKnownErrorTypes } from './helpers';
 import {
@@ -77,8 +86,9 @@ import { mapAsyncIterable } from './iterators-utils';
  *
  * Given the following Workflow definition:
  * ```ts
- * export const incrementSignal = defineSignal('increment');
+ * export const incrementSignal = defineSignal<[number]>('increment');
  * export const getValueQuery = defineQuery<number>('getValue');
+ * export const incrementAndGetValueUpdate = defineUpdate<number, [number]>('incrementAndGetValue');
  * export async function counterWorkflow(initialValue: number): Promise<void>;
  * ```
  *
@@ -92,12 +102,33 @@ import { mapAsyncIterable } from './iterators-utils';
  *   taskQueue: 'tutorial',
  * });
  * await handle.signal(incrementSignal, 2);
- * await handle.query(getValueQuery); // 4
+ * const queryResult = await handle.query(getValueQuery); // 4
+ * const updateResult = await handle.executeUpdate(incrementAndGetValueUpdate, { args: [2] }); // 6
  * await handle.cancel();
- * await handle.result(); // throws WorkflowExecutionCancelledError
+ * await handle.result(); // throws a WorkflowFailedError with `cause` set to a CancelledFailure.
  * ```
  */
 export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkflowHandle<T> {
+  /**
+   * Update a running Workflow.
+   *
+   * @param def an update definition as returned from {@link defineUpdate}
+   *
+   * @example
+   * ```ts
+   * const updateResult = await handle.executeUpdate(incrementAndGetValueUpdate, { args: [2] });
+   * ```
+   */
+  executeUpdate<Ret, Args extends any[] = [], Name extends string = string>(
+    def: UpdateDefinition<Ret, Args, Name> | string,
+    options?: WithArgs<Args, WorkflowUpdateOptions>
+  ): Promise<Ret>;
+
+  startUpdate<Ret, Args extends any[] = [], Name extends string = string>(
+    def: UpdateDefinition<Ret, Args, Name> | string,
+    options?: WithArgs<Args, WorkflowUpdateOptions>
+  ): Promise<WorkflowUpdateHandle<Ret>>;
+
   /**
    * Query a running or completed Workflow.
    *
@@ -266,6 +297,31 @@ export interface AsyncWorkflowListIterable extends AsyncIterable<WorkflowExecuti
    * Useful in batch replaying
    */
   intoHistories: (intoHistoriesOptions?: IntoHistoriesOptions) => AsyncIterable<HistoryAndWorkflowId>;
+}
+
+/**
+ * A client-side handle to an Update.
+ */
+export interface WorkflowUpdateHandle<Ret> {
+  /**
+   * The ID of this Update request.
+   */
+  id: string;
+
+  /**
+   * The ID of the Workflow being targeted by this Update request.
+   */
+  workflowId: string;
+
+  /**
+   * The ID of the Run of the Workflow being targeted by this Update request.
+   */
+  runId?: string;
+
+  /**
+   * Return the result of the Update.
+   */
+  result(): Promise<Ret>;
 }
 
 /**
@@ -641,6 +697,128 @@ export class WorkflowClient extends BaseClient {
   }
 
   /**
+   * Uses given input to make an UpdateWorkflowExecution call to the service, returning a handle to the update.
+   *
+   * Used as the final function of the startUpdate interceptor chain
+   */
+  protected async _startUpdateHandler<Ret>(input: WorkflowUpdateInput): Promise<WorkflowUpdateHandle<Ret>> {
+    return this._startUpdate(
+      input,
+      temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED
+    );
+  }
+
+  /**
+   * Uses given input to make an UpdateWorkflowExecution call to the service, returning the update result.
+   *
+   * Used as the final function of the executeUpdate interceptor chain
+   */
+  protected async _executeUpdateHandler<Ret>(input: WorkflowUpdateInput): Promise<Ret> {
+    const handle = await this._startUpdate<Ret>(
+      input,
+      temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED
+    );
+    return await handle.result();
+  }
+
+  /**
+   * Start Update and return a handle.
+   */
+  protected async _startUpdate<Ret>(
+    input: WorkflowUpdateInput,
+    waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage
+  ): Promise<WorkflowUpdateHandle<Ret>> {
+    const updateId = input.options?.id ?? uuid4();
+    const req: temporal.api.workflowservice.v1.IUpdateWorkflowExecutionRequest = {
+      namespace: this.options.namespace,
+      workflowExecution: input.workflowExecution,
+      firstExecutionRunId: input.firstExecutionRunId,
+      waitPolicy: { lifecycleStage: waitForStage },
+      request: {
+        meta: {
+          updateId,
+          identity: this.options.identity,
+        },
+        input: {
+          header: { fields: input.headers },
+          name: input.updateName,
+          args: { payloads: await encodeToPayloads(this.dataConverter, ...input.args) },
+        },
+      },
+    };
+    let response: temporal.api.workflowservice.v1.UpdateWorkflowExecutionResponse;
+
+    try {
+      response = await this.workflowService.updateWorkflowExecution(req);
+    } catch (err) {
+      this.rethrowGrpcError(err, 'Workflow Update failed', input.workflowExecution);
+    }
+
+    return {
+      id: updateId,
+      workflowId: input.workflowExecution.workflowId,
+      result: async () => {
+        // Note that the API guarantees that (response.outcome) <=> (update completed).
+        // Therefore we will not poll during executeUpdate(), since in that case
+        // waitForStage == Completed and so at this point the response has an outcome.
+        const outcome = response.outcome ?? (await this._pollUpdate(updateId, input.workflowExecution));
+        if (outcome.failure) {
+          throw new WorkflowUpdateFailedError(
+            'Workflow Update failed',
+            await decodeOptionalFailureToOptionalError(this.dataConverter, outcome.failure)
+          );
+        } else {
+          return decodeFromPayloadsAtIndex<Ret>(this.dataConverter, 0, outcome.success?.payloads);
+        }
+      },
+    };
+  }
+
+  /**
+   * Poll Update until a response with an outcome is received; return that outcome.
+   * This is used directly; no interceptor is available.
+   */
+  protected async _pollUpdate(
+    updateId: string,
+    workflowExecution: temporal.api.common.v1.IWorkflowExecution
+  ): Promise<temporal.api.update.v1.IOutcome> {
+    const req: temporal.api.workflowservice.v1.IPollWorkflowExecutionUpdateRequest = {
+      namespace: this.options.namespace,
+      updateRef: { workflowExecution, updateId },
+      identity: this.options.identity,
+      waitPolicy: {
+        lifecycleStage:
+          temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage
+            .UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED,
+      },
+    };
+
+    let response: temporal.api.workflowservice.v1.PollWorkflowExecutionUpdateResponse;
+
+    // TODO: Users should be able to use client.withDeadline(timestamp) with a
+    // Date (as opposed to a duration) to control the total amount of time
+    // allowed for polling. However, this requires a server change such that the
+    // server swallows the gRPC timeout and instead responds with a well-formed
+    // PollWorkflowExecutionUpdateResponse, indicating that the requested
+    // lifecycle stage has not yet been reached at the time of the deadline
+    // expiry. See https://github.com/temporalio/temporal/issues/4742
+
+    // TODO: When temporal#4742 is released, stop catching DEADLINE_EXCEEDED.
+    while (true) {
+      try {
+        response = await this.workflowService.pollWorkflowExecutionUpdate(req);
+        if (response.outcome) {
+          return response.outcome;
+        }
+      } catch (err) {
+        if (!(isGrpcServiceError(err) && err.code === grpcStatus.DEADLINE_EXCEEDED)) {
+          throw err;
+        }
+      }
+    }
+  }
+
+  /**
    * Uses given input to make a signalWorkflowExecution call to the service
    *
    * Used as the final function of the signal interceptor chain
@@ -879,6 +1057,38 @@ export class WorkflowClient extends BaseClient {
           if (nextPageToken == null || nextPageToken.length === 0) break;
         }
         return temporal.api.history.v1.History.create({ events });
+      },
+      async executeUpdate<Ret, Args extends any[]>(
+        def: UpdateDefinition<Ret, Args> | string,
+        options?: WithArgs<Args, WorkflowUpdateOptions>
+      ): Promise<Ret> {
+        const next = this.client._executeUpdateHandler.bind(this.client);
+        const fn = interceptors.length ? composeInterceptors(interceptors, 'update', next) : next;
+        const { args, ...opts } = options ?? {};
+        return (await fn({
+          workflowExecution: { workflowId, runId },
+          firstExecutionRunId,
+          updateName: typeof def === 'string' ? def : def.name,
+          args: args ?? [],
+          headers: {},
+          options: opts,
+        })) as Promise<Ret>;
+      },
+      async startUpdate<Ret, Args extends any[]>(
+        def: UpdateDefinition<Ret, Args> | string,
+        options?: WithArgs<Args, WorkflowUpdateOptions>
+      ): Promise<WorkflowUpdateHandle<Ret>> {
+        const next = this.client._startUpdateHandler.bind(this.client);
+        const fn = interceptors.length ? composeInterceptors(interceptors, 'update', next) : next;
+        const { args, ...opts } = options ?? {};
+        return (await fn({
+          workflowExecution: { workflowId, runId },
+          firstExecutionRunId,
+          updateName: typeof def === 'string' ? def : def.name,
+          args: args ?? [],
+          headers: {},
+          options: opts,
+        })) as Promise<WorkflowUpdateHandle<Ret>>;
       },
       async signal<Args extends any[]>(def: SignalDefinition<Args> | string, ...args: Args): Promise<void> {
         const next = this.client._signalWorkflowHandler.bind(this.client);
