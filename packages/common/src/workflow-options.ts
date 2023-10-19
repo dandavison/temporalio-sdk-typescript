@@ -2,7 +2,7 @@ import type { temporal, google } from '@temporalio/proto';
 import { SearchAttributes, Workflow } from './interfaces';
 import { RetryPolicy } from './retry-policy';
 import { Duration, msOptionalToTs } from './time';
-import { checkExtends, Replace } from './type-helpers';
+import { checkExtends, Replace, WithArgs } from './type-helpers';
 
 // Avoid importing the proto implementation to reduce workflow bundle size
 // Copied from temporal.api.enums.v1.WorkflowIdReusePolicy
@@ -90,20 +90,7 @@ export interface BaseWorkflowOptions {
   searchAttributes?: SearchAttributes;
 }
 
-export type WithWorkflowArgs<W extends Workflow, T> = T &
-  (Parameters<W> extends [any, ...any[]]
-    ? {
-        /**
-         * Arguments to pass to the Workflow
-         */
-        args: Parameters<W> | Readonly<Parameters<W>>;
-      }
-    : {
-        /**
-         * Arguments to pass to the Workflow
-         */
-        args?: Parameters<W> | Readonly<Parameters<W>>;
-      });
+export type WithWorkflowArgs<W extends Workflow, T> = WithArgs<Parameters<W>, T>;
 
 export interface WorkflowDurationOptions {
   /**
