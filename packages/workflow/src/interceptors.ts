@@ -122,11 +122,11 @@ export interface SignalWorkflowInput {
 export type GetLogAttributesInput = Record<string, unknown>;
 
 /**
- * Implement any of these methods to intercept Workflow code calls to the Temporal APIs, like scheduling an activity and starting a timer
+ * Implement any of these methods to intercept Workflow code calls to the Temporal APIs, like executing an activity and starting a timer
  */
 export interface WorkflowOutboundCallsInterceptor {
   /**
-   * Called when Workflow schedules an Activity
+   * Called when Workflow executes an Activity
    *
    * @return result of the activity execution
    */
