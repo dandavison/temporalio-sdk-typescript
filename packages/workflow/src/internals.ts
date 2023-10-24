@@ -576,8 +576,13 @@ export class Activator implements ActivationHandler {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         this.signalWorkflow(bufferedSignals.shift()!);
       } else {
-        const foundIndex = bufferedSignals.findIndex((signal) => this.signalHandlers.has(signal.signalName ?? ''));
-        if (foundIndex === -1) break;
+        const foundIndex = bufferedSignals.findIndex(
+          (signal) => signal.signalName && this.signalHandlers.has(signal.signalName)
+        );
+        if (foundIndex === -1) {
+          bufferedSignals.splice(0, bufferedSignals.length);
+          break;
+        }
         const [signal] = bufferedSignals.splice(foundIndex, 1);
         this.signalWorkflow(signal);
       }
