@@ -35,6 +35,12 @@ export interface WorkflowUpdateInput {
   readonly options: WorkflowUpdateOptions;
 }
 
+/** Output for WorkflowClientInterceptor.update */
+export interface WorkflowUpdateOutput {
+  readonly updateId: string;
+  readonly outcome?: temporal.api.update.v1.IOutcome | null;
+}
+
 /** Input for WorkflowClientInterceptor.signal */
 export interface WorkflowSignalInput {
   readonly signalName: string;
@@ -94,7 +100,7 @@ export interface WorkflowClientInterceptor {
   /**
    * Intercept a service call to updateWorkflowExecution
    */
-  update?: (input: WorkflowUpdateInput, next: Next<this, 'update'>) => Promise<unknown>;
+  update?: (input: WorkflowUpdateInput, next: Next<this, 'update'>) => Promise<WorkflowUpdateOutput>;
   /**
    * Intercept a service call to signalWorkflowExecution
    *
