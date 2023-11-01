@@ -712,42 +712,43 @@ export class WorkflowClient extends BaseClient {
     return await decodeFromPayloadsAtIndex(this.dataConverter, 0, response.queryResult?.payloads);
   }
 
-  protected _makeStartUpdateHandler(waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage) {
-    /**
-     * Start Update and return a handle.
-     *
-     * Used as the final function of the interceptor chain during startUpdate and executeUpdate.
-     */
-    return async (input: WorkflowUpdateInput): Promise<WorkflowUpdateOutput> => {
-      const updateId = input.options?.updateId ?? uuid4();
-      const req: temporal.api.workflowservice.v1.IUpdateWorkflowExecutionRequest = {
-        namespace: this.options.namespace,
-        workflowExecution: input.workflowExecution,
-        firstExecutionRunId: input.firstExecutionRunId,
-        waitPolicy: { lifecycleStage: waitForStage },
-        request: {
-          meta: {
-            updateId,
-            identity: this.options.identity,
-          },
-          input: {
-            header: { fields: input.headers },
-            name: input.updateName,
-            args: { payloads: await encodeToPayloads(this.dataConverter, ...input.args) },
-          },
+  /**
+   * Start Update and return a handle.
+   *
+   * Used as the final function of the interceptor chain during startUpdate and executeUpdate.
+   */
+  protected async _startUpdateHandler(
+    waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage,
+    input: WorkflowUpdateInput
+  ): Promise<WorkflowUpdateOutput> {
+    const updateId = input.options?.updateId ?? uuid4();
+    const req: temporal.api.workflowservice.v1.IUpdateWorkflowExecutionRequest = {
+      namespace: this.options.namespace,
+      workflowExecution: input.workflowExecution,
+      firstExecutionRunId: input.firstExecutionRunId,
+      waitPolicy: { lifecycleStage: waitForStage },
+      request: {
+        meta: {
+          updateId,
+          identity: this.options.identity,
         },
-      };
-      let response: temporal.api.workflowservice.v1.UpdateWorkflowExecutionResponse;
+        input: {
+          header: { fields: input.headers },
+          name: input.updateName,
+          args: { payloads: await encodeToPayloads(this.dataConverter, ...input.args) },
+        },
+      },
+    };
+    let response: temporal.api.workflowservice.v1.UpdateWorkflowExecutionResponse;
 
-      try {
-        response = await this.workflowService.updateWorkflowExecution(req);
-      } catch (err) {
-        this.rethrowGrpcError(err, 'Workflow Update failed', input.workflowExecution);
-      }
-      return {
-        updateId,
-        outcome: response.outcome,
-      };
+    try {
+      response = await this.workflowService.updateWorkflowExecution(req);
+    } catch (err) {
+      this.rethrowGrpcError(err, 'Workflow Update failed', input.workflowExecution);
+    }
+    return {
+      updateId,
+      outcome: response.outcome,
     };
   }
 
@@ -1015,7 +1016,7 @@ export class WorkflowClient extends BaseClient {
       waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage,
       options?: WithArgs<Args, WorkflowUpdateOptions>
     ): Promise<WorkflowUpdateHandle<Ret>> => {
-      const next = this._makeStartUpdateHandler(waitForStage).bind(this);
+      const next = this._startUpdateHandler.bind(this, waitForStage);
       const fn = composeInterceptors(interceptors, 'update', next);
       const { args, ...opts } = options ?? {};
       const input = {
