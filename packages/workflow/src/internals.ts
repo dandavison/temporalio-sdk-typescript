@@ -554,7 +554,7 @@ export class Activator implements ActivationHandler {
       // TODO (dan): Signal is able to handle this situation more gracefully by
       // using this.bufferedSignals. Should something analogous exist for
       // Update?
-      this.rejectUpdate(id, new ApplicationFailure(`Update has no handler: ${name}`));
+      this.rejectUpdate(id, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
       return;
     }
     const validate = composeInterceptors(
