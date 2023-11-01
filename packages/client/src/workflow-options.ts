@@ -40,7 +40,7 @@ export interface WorkflowOptions extends CommonWorkflowOptions {
 }
 
 export interface WorkflowUpdateOptions {
-  readonly id?: string;
+  readonly updateId?: string;
 }
 
 export type WorkflowSignalWithStartOptions<SignalArgs extends any[] = []> = SignalArgs extends [any, ...any[]]

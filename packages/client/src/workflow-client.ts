@@ -743,7 +743,7 @@ export class WorkflowClient extends BaseClient {
     input: WorkflowUpdateInput,
     waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage
   ): Promise<WorkflowUpdateHandle<Ret>> {
-    const updateId = input.options?.id ?? uuid4();
+    const updateId = input.options?.updateId ?? uuid4();
     const req: temporal.api.workflowservice.v1.IUpdateWorkflowExecutionRequest = {
       namespace: this.options.namespace,
       workflowExecution: input.workflowExecution,
