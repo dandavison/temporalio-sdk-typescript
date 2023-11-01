@@ -32,7 +32,7 @@ export interface WorkflowUpdateInput {
   readonly workflowExecution: WorkflowExecution;
   readonly firstExecutionRunId?: string;
   readonly headers: Headers;
-  readonly options?: WorkflowUpdateOptions;
+  readonly options: WorkflowUpdateOptions;
 }
 
 /** Input for WorkflowClientInterceptor.signal */
