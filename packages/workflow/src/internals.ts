@@ -543,8 +543,8 @@ export class Activator implements ActivationHandler {
   }
 
   public doUpdate(activation: coresdk.workflow_activation.IDoUpdate): void {
-    const { id, name, headers, runValidator } = activation;
-    if (!id) {
+    const { id: updateId, name, headers, runValidator } = activation;
+    if (!updateId) {
       throw new TypeError('Missing activation update id');
     }
     if (!name) {
@@ -554,7 +554,7 @@ export class Activator implements ActivationHandler {
       // TODO (dan): Signal is able to handle this situation more gracefully by
       // using this.bufferedSignals. Should something analogous exist for
       // Update?
-      this.rejectUpdate(id, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
+      this.rejectUpdate(updateId, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
       return;
     }
     const validate = composeInterceptors(
@@ -565,6 +565,7 @@ export class Activator implements ActivationHandler {
     const execute = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
 
     const makeInput = (): UpdateInput => ({
+      updateId,
       args: arrayFromPayloads(this.payloadConverter, activation.input),
       name,
       headers: headers ?? {},
@@ -595,13 +596,13 @@ export class Activator implements ActivationHandler {
       if (runValidator) {
         validate(makeInput());
       }
-      this.acceptUpdate(id);
+      this.acceptUpdate(updateId);
       accepted = true;
-      return execute(makeInput()).then((result) => this.completeUpdate(id, result));
+      return execute(makeInput()).then((result) => this.completeUpdate(updateId, result));
     };
     _doUpdate().catch((error) => {
       if (!accepted || error instanceof TemporalFailure) {
-        this.rejectUpdate(id, error);
+        this.rejectUpdate(updateId, error);
       } else {
         throw error;
       }

@@ -21,6 +21,7 @@ export interface WorkflowExecuteInput {
 /** Input for WorkflowInboundCallsInterceptor.handleUpdate and
  * WorkflowInboundCallsInterceptor.validateUpdate */
 export interface UpdateInput {
+  readonly updateId: string;
   readonly name: string;
   readonly args: unknown[];
   readonly headers: Headers;
