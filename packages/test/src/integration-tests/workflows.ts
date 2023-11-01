@@ -9,11 +9,11 @@ export const update = wf.defineUpdate<string[], [string]>('update');
 // associate a sync handler function, but no validator.
 export const doneUpdate = wf.defineUpdate<void, []>('done-update');
 
-export async function workflowWithUpdates() {
-  let state: string[] = [];
+export async function workflowWithUpdates(): Promise<string[]> {
+  const state: string[] = [];
   const updateHandler = async (arg: string): Promise<string[]> => {
     state.push(arg);
-    if (arg == 'fail-update') {
+    if (arg === 'fail-update') {
       throw new wf.ApplicationFailure(`Deliberate ApplicationFailure in handler`);
     }
     return state;
@@ -22,7 +22,7 @@ export async function workflowWithUpdates() {
     state.push('done');
   };
   const validator = (arg: string): void => {
-    if (arg == 'bad-arg') {
+    if (arg === 'bad-arg') {
       throw new Error('Validation failed');
     }
   };
@@ -35,8 +35,8 @@ export async function workflowWithUpdates() {
 
 export const updateWithMutableArg = wf.defineUpdate<string[], [[string]]>('updateWithMutableArg');
 
-export async function workflowWithMutatingValidator() {
-  let state: string[] = [];
+export async function workflowWithMutatingValidator(): Promise<string[]> {
+  const state: string[] = [];
   const updateHandler = async (arg: [string]): Promise<string[]> => {
     state.push(arg[0]);
     return state;

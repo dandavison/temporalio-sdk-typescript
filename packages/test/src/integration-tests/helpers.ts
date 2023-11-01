@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+import { ErrorConstructor, ExecutionContext, TestFn } from 'ava';
 import {
   WorkflowFailedError,
   WorkflowHandle,
@@ -19,8 +21,6 @@ import {
   bundleWorkflowCode,
 } from '@temporalio/worker';
 import * as workflow from '@temporalio/workflow';
-import { ErrorConstructor, ExecutionContext, TestFn } from 'ava';
-import { randomUUID } from 'crypto';
 import { ConnectionInjectorInterceptor } from '../activities/interceptors';
 import { Worker, test as anyTest, bundlerOptions } from '../helpers';
 
@@ -33,7 +33,7 @@ export function makeTestFunction(opts: {
   workflowsPath: string;
   workflowEnvironmentOpts?: LocalTestWorkflowEnvironmentOptions;
   workflowInterceptorModules?: string[];
-}) {
+}): TestFn<Context> {
   const test = anyTest as TestFn<Context>;
   test.before(async (t) => {
     // Ignore invalid log levels

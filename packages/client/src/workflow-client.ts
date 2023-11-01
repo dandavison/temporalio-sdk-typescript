@@ -820,7 +820,7 @@ export class WorkflowClient extends BaseClient {
     // expiry. See https://github.com/temporalio/temporal/issues/4742
 
     // TODO: When temporal#4742 is released, stop catching DEADLINE_EXCEEDED.
-    while (true) {
+    for (;;) {
       try {
         response = await this.workflowService.pollWorkflowExecutionUpdate(req);
         if (response.outcome) {

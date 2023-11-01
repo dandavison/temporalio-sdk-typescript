@@ -22,7 +22,7 @@ export class UpdateInboundCallsInterceptor implements WorkflowInboundCallsInterc
   }
 }
 
-export const interceptors = () => ({
+export const interceptors = (): wf.WorkflowInterceptors => ({
   inbound: [new UpdateInboundCallsInterceptor()],
 });
 

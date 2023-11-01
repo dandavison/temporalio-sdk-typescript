@@ -1,4 +1,4 @@
-import { Next, UpdateInput, WorkflowInboundCallsInterceptor } from '@temporalio/workflow';
+import { Next, UpdateInput, WorkflowInboundCallsInterceptor, WorkflowInterceptors } from '@temporalio/workflow';
 import { helpers, makeTestFunction } from './helpers';
 import { update, workflowWithUpdates, workflowsPath } from './workflows';
 
@@ -32,7 +32,7 @@ export class UpdateInboundCallsInterceptor implements WorkflowInboundCallsInterc
   }
 }
 
-export const interceptors = () => ({
+export const interceptors = (): WorkflowInterceptors => ({
   inbound: [new UpdateInboundCallsInterceptor()],
 });
 
