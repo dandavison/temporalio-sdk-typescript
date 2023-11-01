@@ -1031,7 +1031,7 @@ export class WorkflowClient extends BaseClient {
       },
       async terminate(reason?: string) {
         const next = this.client._terminateWorkflowHandler.bind(this.client);
-        const fn = interceptors.length ? composeInterceptors(interceptors, 'terminate', next) : next;
+        const fn = composeInterceptors(interceptors, 'terminate', next);
         return await fn({
           workflowExecution: { workflowId, runId },
           reason,
@@ -1040,7 +1040,7 @@ export class WorkflowClient extends BaseClient {
       },
       async cancel() {
         const next = this.client._cancelWorkflowHandler.bind(this.client);
-        const fn = interceptors.length ? composeInterceptors(interceptors, 'cancel', next) : next;
+        const fn = composeInterceptors(interceptors, 'cancel', next);
         return await fn({
           workflowExecution: { workflowId, runId },
           firstExecutionRunId,
@@ -1048,7 +1048,7 @@ export class WorkflowClient extends BaseClient {
       },
       async describe() {
         const next = this.client._describeWorkflowHandler.bind(this.client);
-        const fn = interceptors.length ? composeInterceptors(interceptors, 'describe', next) : next;
+        const fn = composeInterceptors(interceptors, 'describe', next);
         const raw = await fn({
           workflowExecution: { workflowId, runId },
         });
@@ -1079,7 +1079,7 @@ export class WorkflowClient extends BaseClient {
         options?: WithArgs<Args, WorkflowUpdateOptions>
       ): Promise<Ret> {
         const next = this.client._executeUpdateHandler.bind(this.client);
-        const fn = interceptors.length ? composeInterceptors(interceptors, 'update', next) : next;
+        const fn = composeInterceptors(interceptors, 'update', next);
         const { args, ...opts } = options ?? {};
         return (await fn({
           workflowExecution: { workflowId, runId },
@@ -1095,7 +1095,7 @@ export class WorkflowClient extends BaseClient {
         options?: WithArgs<Args, WorkflowUpdateOptions>
       ): Promise<WorkflowUpdateHandle<Ret>> {
         const next = this.client._startUpdateHandler.bind(this.client);
-        const fn = interceptors.length ? composeInterceptors(interceptors, 'update', next) : next;
+        const fn = composeInterceptors(interceptors, 'update', next);
         const { args, ...opts } = options ?? {};
         return (await fn({
           workflowExecution: { workflowId, runId },
@@ -1108,7 +1108,7 @@ export class WorkflowClient extends BaseClient {
       },
       async signal<Args extends any[]>(def: SignalDefinition<Args> | string, ...args: Args): Promise<void> {
         const next = this.client._signalWorkflowHandler.bind(this.client);
-        const fn = interceptors.length ? composeInterceptors(interceptors, 'signal', next) : next;
+        const fn = composeInterceptors(interceptors, 'signal', next);
         await fn({
           workflowExecution: { workflowId, runId },
           signalName: typeof def === 'string' ? def : def.name,
@@ -1118,7 +1118,7 @@ export class WorkflowClient extends BaseClient {
       },
       async query<Ret, Args extends any[]>(def: QueryDefinition<Ret, Args> | string, ...args: Args): Promise<Ret> {
         const next = this.client._queryWorkflowHandler.bind(this.client);
-        const fn = interceptors.length ? composeInterceptors(interceptors, 'query', next) : next;
+        const fn = composeInterceptors(interceptors, 'query', next);
         return fn({
           workflowExecution: { workflowId, runId },
           queryRejectCondition: this.client.options.queryRejectCondition,
