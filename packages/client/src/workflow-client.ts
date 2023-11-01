@@ -757,6 +757,7 @@ export class WorkflowClient extends BaseClient {
     return {
       id: updateId,
       workflowId: input.workflowExecution.workflowId,
+      workflowRunId: input.workflowExecution.runId,
       result: async () => {
         // Note that the API guarantees that (response.outcome) <=> (update completed).
         // Therefore we will not poll during executeUpdate(), since in that case
