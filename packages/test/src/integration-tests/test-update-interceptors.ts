@@ -36,13 +36,25 @@ export const interceptors = (): WorkflowInterceptors => ({
   inbound: [new UpdateInboundCallsInterceptor()],
 });
 
-test('Update client and inbound interceptors work', async (t) => {
+test('Update client and inbound interceptors work for executeUpdate', async (t) => {
   const { createWorker, startWorkflow } = helpers(t);
   const worker = await createWorker();
   await worker.runUntil(async () => {
     const wfHandle = await startWorkflow(workflowWithUpdates);
 
     const updateResult = await wfHandle.executeUpdate(update, { args: ['1'] });
+    t.deepEqual(updateResult, ['1-clientIntercepted-inboundIntercepted']);
+  });
+});
+
+test('Update client and inbound interceptors work for startUpdate', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+
+    const updateHandle = await wfHandle.startUpdate(update, { args: ['1'] });
+    const updateResult = await updateHandle.result();
     t.deepEqual(updateResult, ['1-clientIntercepted-inboundIntercepted']);
   });
 });
