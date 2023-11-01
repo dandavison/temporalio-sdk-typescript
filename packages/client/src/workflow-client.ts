@@ -1074,7 +1074,7 @@ export class WorkflowClient extends BaseClient {
         }
         return temporal.api.history.v1.History.create({ events });
       },
-      async executeUpdate<Ret, Args extends any[]>(
+      async executeUpdate<Ret, Args extends unknown[]>(
         def: UpdateDefinition<Ret, Args> | string,
         options?: WithArgs<Args, WorkflowUpdateOptions>
       ): Promise<Ret> {
@@ -1090,7 +1090,7 @@ export class WorkflowClient extends BaseClient {
           options: opts,
         })) as Promise<Ret>;
       },
-      async startUpdate<Ret, Args extends any[]>(
+      async startUpdate<Ret, Args extends unknown[]>(
         def: UpdateDefinition<Ret, Args> | string,
         options?: WithArgs<Args, WorkflowUpdateOptions>
       ): Promise<WorkflowUpdateHandle<Ret>> {
@@ -1106,7 +1106,7 @@ export class WorkflowClient extends BaseClient {
           options: opts,
         })) as Promise<WorkflowUpdateHandle<Ret>>;
       },
-      async signal<Args extends any[]>(def: SignalDefinition<Args> | string, ...args: Args): Promise<void> {
+      async signal<Args extends unknown[]>(def: SignalDefinition<Args> | string, ...args: Args): Promise<void> {
         const next = this.client._signalWorkflowHandler.bind(this.client);
         const fn = composeInterceptors(interceptors, 'signal', next);
         await fn({
@@ -1116,7 +1116,7 @@ export class WorkflowClient extends BaseClient {
           headers: {},
         });
       },
-      async query<Ret, Args extends any[]>(def: QueryDefinition<Ret, Args> | string, ...args: Args): Promise<Ret> {
+      async query<Ret, Args extends unknown[]>(def: QueryDefinition<Ret, Args> | string, ...args: Args): Promise<Ret> {
         const next = this.client._queryWorkflowHandler.bind(this.client);
         const fn = composeInterceptors(interceptors, 'query', next);
         return fn({
