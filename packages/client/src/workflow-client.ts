@@ -112,7 +112,8 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
   /**
    * Update a running Workflow and wait for the result.
    *
-   * @param def an update definition as returned from {@link defineUpdate}
+   * @param def an Update definition as returned from {@link defineUpdate}
+   * @param options Update arguments
    *
    * @example
    * ```ts
