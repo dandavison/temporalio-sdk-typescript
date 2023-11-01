@@ -103,7 +103,9 @@ import { mapAsyncIterable } from './iterators-utils';
  * });
  * await handle.signal(incrementSignal, 2);
  * const queryResult = await handle.query(getValueQuery); // 4
- * const updateResult = await handle.executeUpdate(incrementAndGetValueUpdate, { args: [2] }); // 6
+ * const firstUpdateResult = await handle.executeUpdate(incrementAndGetValueUpdate, { args: [2] }); // 6
+ * const secondUpdateHandle = await handle.startUpdate(incrementAndGetValueUpdate, { args: [2] });
+ * const secondUpdateResult = await secondUpdateHandle.result(); // 8
  * await handle.cancel();
  * await handle.result(); // throws a WorkflowFailedError with `cause` set to a CancelledFailure.
  * ```
@@ -125,6 +127,18 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
     options?: WithArgs<Args, WorkflowUpdateOptions>
   ): Promise<Ret>;
 
+  /**
+   * Start an Update on a running Workflow and receive a handle to the Update.
+   *
+   * @param def an Update definition as returned from {@link defineUpdate}
+   * @param options Update arguments
+   *
+   * @example
+   * ```ts
+   * const updateHandle = await handle.startUpdate(incrementAndGetValueUpdate, { args: [2] });
+   * const updateResult = await updateHandle.result();
+   * ```
+   */
   startUpdate<Ret, Args extends any[] = [], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
     options?: WithArgs<Args, WorkflowUpdateOptions>

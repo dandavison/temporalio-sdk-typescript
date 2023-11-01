@@ -139,6 +139,9 @@ test('Update/Signal/Query example in WorkflowHandle docstrings works', async (t)
     t.is(queryResult, 4);
     const updateResult = await wfHandle.executeUpdate(workflows.incrementAndGetValueUpdate, { args: [2] });
     t.is(updateResult, 6);
+    const secondUpdateHandle = await wfHandle.startUpdate(workflows.incrementAndGetValueUpdate, { args: [2] });
+    const secondUpdateResult = await secondUpdateHandle.result();
+    t.is(secondUpdateResult, 8);
     await wfHandle.cancel();
     await assertWorkflowFailedError(wfHandle.result(), wf.CancelledFailure);
   });
