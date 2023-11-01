@@ -316,7 +316,7 @@ export interface WorkflowUpdateHandle<Ret> {
   /**
    * The ID of the Run of the Workflow being targeted by this Update request.
    */
-  runId?: string;
+  workflowRunId?: string;
 
   /**
    * Return the result of the Update.
