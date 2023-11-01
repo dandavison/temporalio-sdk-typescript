@@ -110,7 +110,7 @@ import { mapAsyncIterable } from './iterators-utils';
  */
 export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkflowHandle<T> {
   /**
-   * Update a running Workflow.
+   * Update a running Workflow and wait for the result.
    *
    * @param def an update definition as returned from {@link defineUpdate}
    *
