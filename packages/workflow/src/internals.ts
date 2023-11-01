@@ -130,7 +130,7 @@ export class Activator implements ActivationHandler {
   /**
    * Mapping of update name to handler and validator
    */
-  readonly updateHandlers = new Map<string, [WorkflowUpdateType, WorkflowUpdateValidatorType?]>();
+  readonly updateHandlers = new Map<string, { handler: WorkflowUpdateType; validator?: WorkflowUpdateValidatorType }>();
 
   /**
    * Mapping of signal name to handler
@@ -609,18 +609,18 @@ export class Activator implements ActivationHandler {
   }
 
   public async updateNextHandler({ name, args }: UpdateInput): Promise<unknown> {
-    const [fn, _] = this.updateHandlers.get(name) ?? [];
-    if (fn) {
-      return await fn(...args);
+    const { handler } = this.updateHandlers.get(name) ?? {};
+    if (handler) {
+      return await handler(...args);
     } else {
       throw new IllegalStateError(`No registered update handler for update: ${name}`);
     }
   }
 
   public validateUpdateNextHandler({ name, args }: UpdateInput): void {
-    const [_, fn] = this.updateHandlers.get(name) ?? [];
-    if (fn) {
-      fn(...args);
+    const { validator } = this.updateHandlers.get(name) ?? {};
+    if (validator) {
+      validator(...args);
     }
   }
 
