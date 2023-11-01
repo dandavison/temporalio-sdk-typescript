@@ -1225,7 +1225,7 @@ export function setHandler<
   const activator = assertInWorkflowContext('Workflow.setHandler(...) may only be used from a Workflow Execution.');
   if (def.type === 'update') {
     if (typeof handler === 'function') {
-      const validator = (options ?? {}).validator as WorkflowUpdateValidatorType | undefined;
+      const validator = options?.validator;
       activator.updateHandlers.set(def.name, [handler, validator]);
     } else if (handler == null) {
       activator.updateHandlers.delete(def.name);
