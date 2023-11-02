@@ -1010,7 +1010,7 @@ export class WorkflowClient extends BaseClient {
     runIdForResult,
     ...resultOptions
   }: WorkflowHandleOptions): WorkflowHandle<T> {
-    // TODO (dan): is there a better location? It must not be visible to users on the WorkflowHandle.
+    // TODO (dan): Convert to class with this as a protected method
     const _startUpdate = async <Ret, Args extends unknown[]>(
       def: UpdateDefinition<Ret, Args> | string,
       waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage,
