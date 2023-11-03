@@ -748,7 +748,7 @@ export class WorkflowClient extends BaseClient {
     }
     return {
       updateId,
-      outcome: response.outcome,
+      outcome: response.outcome ?? undefined,
     };
   }
 
