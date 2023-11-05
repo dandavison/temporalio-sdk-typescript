@@ -35,6 +35,7 @@ const test = makeTestFunction({
         ],
       },
     },
+    // TODO: remove this server config when default test server supports update
     server: {
       executable: {
         type: 'cached-download',

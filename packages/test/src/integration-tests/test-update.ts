@@ -56,6 +56,7 @@ export async function workflowWithMutatingValidator(): Promise<string[]> {
 const test = makeTestFunction({
   workflowsPath: __filename,
   workflowEnvironmentOpts: {
+    // TODO: remove this server config when default test server supports update
     server: {
       executable: {
         type: 'cached-download',

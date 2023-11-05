@@ -32,6 +32,7 @@ export async function workflowWithUpdates(): Promise<string[]> {
 const test = makeTestFunction({
   workflowsPath: __filename,
   workflowInterceptorModules: [require.resolve(__filename)],
+  // TODO: remove this server config when default test server supports update
   workflowEnvironmentOpts: {
     server: {
       executable: {
