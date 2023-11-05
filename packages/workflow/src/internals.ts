@@ -557,11 +557,6 @@ export class Activator implements ActivationHandler {
       this.rejectUpdate(updateId, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
       return;
     }
-    const validate = composeInterceptors(
-      this.interceptors.inbound,
-      'validateUpdate',
-      this.validateUpdateNextHandler.bind(this)
-    );
     const execute = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
 
     const makeInput = (): UpdateInput => ({
@@ -574,39 +569,43 @@ export class Activator implements ActivationHandler {
     // The implementation below is responsible for upholding the following
     // guarantees:
     //
-    // 1. The initial synchronous portion of the (async) Update handler should
-    //    be executed "as soon as possible" after the (sync) validator
-    //    completes. Ideally, there is no possibility that a different
-    //    concurrent task can be scheduled between these.
-    //
-    // 2. During validation, any error must fail the Update; during the Update
+    // 1. During validation, any error must fail the Update; during the Update
     //    itself, Temporal errors fail the Update whereas other errors fail the
     //    activation.
     //
-    // 3. The handler will not see any mutations of the arguments made by the
+    // 2. The handler will not see any mutations of the arguments made by the
     //    validator.
+    //
+    // 3. The initial synchronous portion of the (async) Update handler should
+    //    be executed after the (sync) validator completes such that there is
+    //    minimal opportunity for a different concurrent task to be scheduled
+    //    between them.
     //
     // Note that there is a deliberately unhandled promise rejection below.
     // These are caught elsewhere and fail the corresponding activation.
-
-    // Due to (1), we do not use `return await ...`.
-    // TODO (dan): Read https://v8.dev/blog/fast-async: should we use `return await` or not?
-    let accepted = false;
-    const _doUpdate = async () => {
-      if (runValidator) {
+    if (runValidator) {
+      const validate = composeInterceptors(
+        this.interceptors.inbound,
+        'validateUpdate',
+        this.validateUpdateNextHandler.bind(this)
+      );
+      try {
         validate(makeInput());
-      }
-      this.acceptUpdate(updateId);
-      accepted = true;
-      return execute(makeInput()).then((result) => this.completeUpdate(updateId, result));
-    };
-    _doUpdate().catch((error) => {
-      if (!accepted || error instanceof TemporalFailure) {
+      } catch (error) {
         this.rejectUpdate(updateId, error);
-      } else {
-        throw error;
+        return;
       }
-    });
+    }
+    this.acceptUpdate(updateId);
+    execute(makeInput())
+      .then((result) => this.completeUpdate(updateId, result))
+      .catch((error) => {
+        if (error instanceof TemporalFailure) {
+          this.rejectUpdate(updateId, error);
+        } else {
+          throw error;
+        }
+      });
   }
 
   public async updateNextHandler({ name, args }: UpdateInput): Promise<unknown> {
