@@ -23,7 +23,7 @@ import {
 } from '@temporalio/common';
 import { composeInterceptors } from '@temporalio/common/lib/interceptors';
 import { History } from '@temporalio/common/lib/proto-utils';
-import { SymbolBasedInstanceOfError, WithArgs } from '@temporalio/common/lib/type-helpers';
+import { SymbolBasedInstanceOfError } from '@temporalio/common/lib/type-helpers';
 import {
   decodeArrayFromPayloads,
   decodeFromPayloadsAtIndex,
@@ -125,9 +125,14 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
    * const updateResult = await handle.executeUpdate(incrementAndGetValueUpdate, { args: [2] });
    * ```
    */
-  executeUpdate<Ret, Args extends any[] = [], Name extends string = string>(
+  executeUpdate<Ret, Args extends [any, ...any[]], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options?: WithArgs<Args, WorkflowUpdateOptions>
+    options: WorkflowUpdateOptions & { args: Args }
+  ): Promise<Ret>;
+
+  executeUpdate<Ret, Args extends [], Name extends string = string>(
+    def: UpdateDefinition<Ret, Args, Name> | string,
+    options?: WorkflowUpdateOptions & { args?: Args }
   ): Promise<Ret>;
 
   /**
@@ -145,9 +150,14 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
    * const updateResult = await updateHandle.result();
    * ```
    */
-  startUpdate<Ret, Args extends any[] = [], Name extends string = string>(
+  startUpdate<Ret, Args extends [any, ...any[]], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options?: WithArgs<Args, WorkflowUpdateOptions>
+    options: WorkflowUpdateOptions & { args: Args }
+  ): Promise<WorkflowUpdateHandle<Ret>>;
+
+  startUpdate<Ret, Args extends [], Name extends string = string>(
+    def: UpdateDefinition<Ret, Args, Name> | string,
+    options?: WorkflowUpdateOptions
   ): Promise<WorkflowUpdateHandle<Ret>>;
 
   /**
@@ -1020,7 +1030,7 @@ export class WorkflowClient extends BaseClient {
     const _startUpdate = async <Ret, Args extends unknown[]>(
       def: UpdateDefinition<Ret, Args> | string,
       waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage,
-      options?: WithArgs<Args, WorkflowUpdateOptions>
+      options?: WorkflowUpdateOptions & { args?: Args }
     ): Promise<WorkflowUpdateHandle<Ret>> => {
       const next = this._startUpdateHandler.bind(this, waitForStage);
       const fn = composeInterceptors(interceptors, 'update', next);
@@ -1091,7 +1101,7 @@ export class WorkflowClient extends BaseClient {
       },
       async startUpdate<Ret, Args extends unknown[]>(
         def: UpdateDefinition<Ret, Args> | string,
-        options?: WithArgs<Args, WorkflowUpdateOptions>
+        options?: WorkflowUpdateOptions & { args?: Args }
       ): Promise<WorkflowUpdateHandle<Ret>> {
         return await _startUpdate(
           def,
@@ -1103,7 +1113,7 @@ export class WorkflowClient extends BaseClient {
 
       async executeUpdate<Ret, Args extends unknown[]>(
         def: UpdateDefinition<Ret, Args> | string,
-        options?: WithArgs<Args, WorkflowUpdateOptions>
+        options?: WorkflowUpdateOptions & { args?: Args }
       ): Promise<Ret> {
         const handle = await _startUpdate(
           def,

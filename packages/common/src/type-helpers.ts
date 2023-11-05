@@ -92,24 +92,6 @@ export type Class<E extends Error> = {
 };
 
 /**
- * Add an `args` property to T, typed appropriately to model arguments A.
- */
-export type WithArgs<A extends any[], T> = T &
-  (A extends [any, ...any[]]
-    ? {
-        /**
-         * Arguments to pass.
-         */
-        args: A;
-      }
-    : {
-        /**
-         * Arguments to pass.
-         */
-        args?: A;
-      });
-
-/**
  * A decorator to be used on error classes. It adds the 'name' property AND provides a custom
  * 'instanceof' handler that works correctly across execution contexts.
  *

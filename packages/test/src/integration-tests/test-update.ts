@@ -158,7 +158,7 @@ test('Update is rejected if there is no handler', async (t) => {
   await worker.runUntil(async () => {
     const wfHandle = await startWorkflow(workflowWithUpdates);
     await assertWorkflowUpdateFailed(
-      wfHandle.executeUpdate(updateWithoutHandler),
+      wfHandle.executeUpdate(updateWithoutHandler, { args: [''] }),
       wf.ApplicationFailure,
       'Update has no handler: updateWithoutHandler'
     );
