@@ -113,7 +113,9 @@ import { mapAsyncIterable } from './iterators-utils';
  */
 export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkflowHandle<T> {
   /**
-   * Update a running Workflow and wait for the result.
+   * Start an Update and wait for the result.
+   *
+   * @throws {@link WorkflowUpdateFailedError} if Update validation fails or if ApplicationFailure is thrown in the Update handler.
    *
    * @param def an Update definition as returned from {@link defineUpdate}
    * @param options Update arguments
@@ -129,7 +131,10 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
   ): Promise<Ret>;
 
   /**
-   * Start an Update on a running Workflow and receive a handle to the Update.
+   * Start an Update and receive a handle to the Update.
+   * The Update validator (if present) is run before the handle is returned.
+   *
+   *  @throws {@link WorkflowUpdateFailedError} if Update validation fails.
    *
    * @param def an Update definition as returned from {@link defineUpdate}
    * @param options Update arguments
@@ -336,6 +341,7 @@ export interface WorkflowUpdateHandle<Ret> {
 
   /**
    * Return the result of the Update.
+   * @throws {@link WorkflowUpdateFailedError} if ApplicationFailure is thrown in the Update handler.
    */
   result(): Promise<Ret>;
 }
