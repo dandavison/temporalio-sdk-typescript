@@ -611,11 +611,10 @@ export class Activator implements ActivationHandler {
 
   public async updateNextHandler({ name, args }: UpdateInput): Promise<unknown> {
     const { handler } = this.updateHandlers.get(name) ?? {};
-    if (handler) {
-      return await handler(...args);
-    } else {
+    if (!handler) {
       throw new IllegalStateError(`No registered update handler for update: ${name}`);
     }
+    return await handler(...args);
   }
 
   public validateUpdateNextHandler({ name, args }: UpdateInput): void {
