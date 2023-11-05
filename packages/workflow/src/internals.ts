@@ -597,15 +597,17 @@ export class Activator implements ActivationHandler {
       }
     }
     this.acceptUpdate(updateId);
-    execute(makeInput())
-      .then((result) => this.completeUpdate(updateId, result))
-      .catch((error) => {
-        if (error instanceof TemporalFailure) {
-          this.rejectUpdate(updateId, error);
-        } else {
-          throw error;
-        }
-      });
+    untrackPromise(
+      execute(makeInput())
+        .then((result) => this.completeUpdate(updateId, result))
+        .catch((error) => {
+          if (error instanceof TemporalFailure) {
+            this.rejectUpdate(updateId, error);
+          } else {
+            throw error;
+          }
+        })
+    );
   }
 
   public async updateNextHandler({ name, args }: UpdateInput): Promise<unknown> {
