@@ -181,6 +181,16 @@ test('Update sent after workflow completed', async (t) => {
   });
 });
 
+test('Update id can be assigned and is present on returned handle', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+    const updateHandle = await wfHandle.startUpdate(doneUpdate, { updateId: 'my-update-id' });
+    t.is(updateHandle.updateId, 'my-update-id');
+  });
+});
+
 /* BEGIN: Test example from WorkflowHandle docstring */
 export const incrementSignal = wf.defineSignal<[number]>('increment');
 export const getValueQuery = wf.defineQuery<number>('getValue');
