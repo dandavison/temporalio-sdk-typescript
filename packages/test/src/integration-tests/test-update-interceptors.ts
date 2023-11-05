@@ -1,10 +1,27 @@
-import { Next, UpdateInput, WorkflowInboundCallsInterceptor, WorkflowInterceptors } from '@temporalio/workflow';
 import { WorkflowUpdateInput, WorkflowUpdateOutput } from '@temporalio/client';
+import * as wf from '@temporalio/workflow';
+import { Next, UpdateInput, WorkflowInboundCallsInterceptor, WorkflowInterceptors } from '@temporalio/workflow';
 import { helpers, makeTestFunction } from './helpers';
-import { update, workflowWithUpdates, workflowsPath } from './workflows';
+
+export const update = wf.defineUpdate<string[], [string]>('update');
+
+export async function workflowWithUpdates(): Promise<string[]> {
+  const state: string[] = [];
+  const updateHandler = async (arg: string): Promise<string[]> => {
+    state.push(arg);
+    if (arg === 'fail-update') {
+      throw new wf.ApplicationFailure(`Deliberate ApplicationFailure in handler`);
+    }
+    return state;
+  };
+  wf.setHandler(update, updateHandler);
+  await wf.condition(() => state.includes('done'));
+  state.push('$');
+  return state;
+}
 
 const test = makeTestFunction({
-  workflowsPath,
+  workflowsPath: __filename,
   workflowInterceptorModules: [require.resolve(__filename)],
   workflowEnvironmentOpts: {
     client: {
