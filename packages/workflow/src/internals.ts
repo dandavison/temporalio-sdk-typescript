@@ -557,7 +557,6 @@ export class Activator implements ActivationHandler {
       this.rejectUpdate(updateId, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
       return;
     }
-    const execute = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
 
     const makeInput = (): UpdateInput => ({
       updateId,
@@ -565,6 +564,20 @@ export class Activator implements ActivationHandler {
       name,
       headers: headers ?? {},
     });
+
+    const execute = async (): Promise<unknown> => {
+      const fn = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
+      return await fn(makeInput());
+    };
+
+    const validate = (): void => {
+      const fn = composeInterceptors(
+        this.interceptors.inbound,
+        'validateUpdate',
+        this.validateUpdateNextHandler.bind(this)
+      );
+      fn(makeInput());
+    };
 
     // The implementation below is responsible for upholding the following
     // guarantees:
@@ -576,39 +589,39 @@ export class Activator implements ActivationHandler {
     // 2. The handler will not see any mutations of the arguments made by the
     //    validator.
     //
-    // 3. The initial synchronous portion of the (async) Update handler should
+    // 3. Any error when decoding/deserializing input must be caught and result
+    //    in rejection of the Update before it is accepted, even if there is no
+    //    validator.
+    //
+    // 4. The initial synchronous portion of the (async) Update handler should
     //    be executed after the (sync) validator completes such that there is
     //    minimal opportunity for a different concurrent task to be scheduled
     //    between them.
     //
     // Note that there is a deliberately unhandled promise rejection below.
     // These are caught elsewhere and fail the corresponding activation.
-    let input: UpdateInput;
-    try {
+
+    let accepted = false;
+    // TODO (dan): Using an async function here is deliberate; it makes the
+    // implementation clean and readable (error handling in one place, reject in
+    // one place, no need for early returns after reject, etc.) However, is an
+    // async function permitted in this location?
+    const _doUpdate = async () => {
       if (runValidator) {
-        const validate = composeInterceptors(
-          this.interceptors.inbound,
-          'validateUpdate',
-          this.validateUpdateNextHandler.bind(this)
-        );
-        validate(makeInput());
+        validate();
       }
-      input = makeInput();
-    } catch (error) {
-      this.rejectUpdate(updateId, error);
-      return;
-    }
-    this.acceptUpdate(updateId);
+      this.acceptUpdate(updateId);
+      accepted = true;
+      return execute().then((result) => this.completeUpdate(updateId, result));
+    };
     untrackPromise(
-      execute(input)
-        .then((result) => this.completeUpdate(updateId, result))
-        .catch((error) => {
-          if (error instanceof TemporalFailure) {
-            this.rejectUpdate(updateId, error);
-          } else {
-            throw error;
-          }
-        })
+      _doUpdate().catch((error) => {
+        if (!accepted || error instanceof TemporalFailure) {
+          this.rejectUpdate(updateId, error);
+        } else {
+          throw error;
+        }
+      })
     );
   }
 
