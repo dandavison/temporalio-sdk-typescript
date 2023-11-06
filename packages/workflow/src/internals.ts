@@ -583,22 +583,24 @@ export class Activator implements ActivationHandler {
     //
     // Note that there is a deliberately unhandled promise rejection below.
     // These are caught elsewhere and fail the corresponding activation.
-    if (runValidator) {
-      const validate = composeInterceptors(
-        this.interceptors.inbound,
-        'validateUpdate',
-        this.validateUpdateNextHandler.bind(this)
-      );
-      try {
+    let input: UpdateInput;
+    try {
+      if (runValidator) {
+        const validate = composeInterceptors(
+          this.interceptors.inbound,
+          'validateUpdate',
+          this.validateUpdateNextHandler.bind(this)
+        );
         validate(makeInput());
-      } catch (error) {
-        this.rejectUpdate(updateId, error);
-        return;
       }
+      input = makeInput();
+    } catch (error) {
+      this.rejectUpdate(updateId, error);
+      return;
     }
     this.acceptUpdate(updateId);
     untrackPromise(
-      execute(makeInput())
+      execute(input)
         .then((result) => this.completeUpdate(updateId, result))
         .catch((error) => {
           if (error instanceof TemporalFailure) {
