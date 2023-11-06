@@ -1,9 +1,9 @@
-import { firstValueFrom, Subject } from 'rxjs';
 import * as activity from '@temporalio/activity';
 import { WorkflowFailedError } from '@temporalio/client';
 import { tsToMs } from '@temporalio/common/lib/time';
 import { CancelReason } from '@temporalio/worker/lib/activity';
 import * as workflow from '@temporalio/workflow';
+import { firstValueFrom, Subject } from 'rxjs';
 import { signalSchedulingWorkflow } from '../activities/helpers';
 import { activityStartedSignal } from '../workflows/definitions';
 import { helpers, makeTestFunction } from './helpers';
