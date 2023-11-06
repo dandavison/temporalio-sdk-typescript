@@ -492,7 +492,7 @@ export class Activator implements ActivationHandler {
     }
   }
 
-  // Intentionally not made function async so this handler doesn't show up in the stack trace
+  // Intentionally non-async function so this handler doesn't show up in the stack trace
   protected queryWorkflowNextHandler({ queryName, args }: QueryInput): Promise<unknown> {
     const fn = this.queryHandlers.get(queryName);
     if (fn === undefined) {
@@ -625,15 +625,16 @@ export class Activator implements ActivationHandler {
     );
   }
 
-  public async updateNextHandler({ name, args }: UpdateInput): Promise<unknown> {
+  // Intentionally non-async function so this handler doesn't show up in the stack trace
+  protected updateNextHandler({ name, args }: UpdateInput): Promise<unknown> {
     const { handler } = this.updateHandlers.get(name) ?? {};
     if (!handler) {
       throw new IllegalStateError(`No registered update handler for update: ${name}`);
     }
-    return await handler(...args);
+    return handler(...args);
   }
 
-  public validateUpdateNextHandler({ name, args }: UpdateInput): void {
+  protected validateUpdateNextHandler({ name, args }: UpdateInput): void {
     const { validator } = this.updateHandlers.get(name) ?? {};
     if (validator) {
       validator(...args);
