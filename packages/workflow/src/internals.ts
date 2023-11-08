@@ -557,6 +557,13 @@ export class Activator implements ActivationHandler {
       this.rejectUpdate(updateId, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
       return;
     }
+    const execute = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
+
+    const validate = composeInterceptors(
+      this.interceptors.inbound,
+      'validateUpdate',
+      this.validateUpdateNextHandler.bind(this)
+    );
 
     const makeInput = (): UpdateInput => ({
       updateId,
@@ -565,28 +572,14 @@ export class Activator implements ActivationHandler {
       headers: headers ?? {},
     });
 
-    const execute = async (): Promise<unknown> => {
-      const fn = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
-      return await fn(makeInput());
-    };
-
-    const validate = (): void => {
-      const fn = composeInterceptors(
-        this.interceptors.inbound,
-        'validateUpdate',
-        this.validateUpdateNextHandler.bind(this)
-      );
-      fn(makeInput());
-    };
-
-    // The implementation below is responsible for upholding the following
-    // guarantees:
+    // The implementation below is responsible for upholding, and constrained
+    // by, the following contract:
     //
     // 1. During validation, any error must fail the Update; during the Update
     //    itself, Temporal errors fail the Update whereas other errors fail the
     //    activation.
     //
-    // 2. The handler will not see any mutations of the arguments made by the
+    // 2. The handler must not see any mutations of the arguments made by the
     //    validator.
     //
     // 3. Any error when decoding/deserializing input must be caught and result
@@ -598,30 +591,33 @@ export class Activator implements ActivationHandler {
     //    minimal opportunity for a different concurrent task to be scheduled
     //    between them.
     //
+    // 5. The stack trace view provided in the Temporal UI must not be polluted
+    //    by promises that do not derive from user code. This implies that
+    //    async/await syntax may not be used.
+    //
     // Note that there is a deliberately unhandled promise rejection below.
     // These are caught elsewhere and fail the corresponding activation.
-
-    let accepted = false;
-    // TODO (dan): Using an async function here is deliberate; it makes the
-    // implementation clean and readable (error handling in one place, reject in
-    // one place, no need for early returns after reject, etc.) However, is an
-    // async function permitted in this location?
-    const _doUpdate = async () => {
+    let input: UpdateInput;
+    try {
       if (runValidator) {
-        validate();
+        validate(makeInput());
       }
-      this.acceptUpdate(updateId);
-      accepted = true;
-      return execute().then((result) => this.completeUpdate(updateId, result));
-    };
+      input = makeInput();
+    } catch (error) {
+      this.rejectUpdate(updateId, error);
+      return;
+    }
+    this.acceptUpdate(updateId);
     untrackPromise(
-      _doUpdate().catch((error) => {
-        if (!accepted || error instanceof TemporalFailure) {
-          this.rejectUpdate(updateId, error);
-        } else {
-          throw error;
-        }
-      })
+      execute(input)
+        .then((result) => this.completeUpdate(updateId, result))
+        .catch((error) => {
+          if (error instanceof TemporalFailure) {
+            this.rejectUpdate(updateId, error);
+          } else {
+            throw error;
+          }
+        })
     );
   }
 
