@@ -1,6 +1,19 @@
 import * as wf from '@temporalio/workflow';
 import { helpers, makeTestFunction } from './helpers';
 
+const test = makeTestFunction({
+  workflowsPath: __filename,
+  workflowEnvironmentOpts: {
+    // TODO: remove this server config when default test server supports update
+    server: {
+      executable: {
+        type: 'cached-download',
+        version: 'latest',
+      },
+    },
+  },
+});
+
 // An update with arguments and return value, with which we associate an async
 // handler function and a validator.
 export const update = wf.defineUpdate<string[], [string]>('update');
@@ -52,19 +65,6 @@ export async function workflowWithMutatingValidator(): Promise<string[]> {
   state.push('$');
   return state;
 }
-
-const test = makeTestFunction({
-  workflowsPath: __filename,
-  workflowEnvironmentOpts: {
-    // TODO: remove this server config when default test server supports update
-    server: {
-      executable: {
-        type: 'cached-download',
-        version: 'latest',
-      },
-    },
-  },
-});
 
 test('Update can be executed via executeUpdate()', async (t) => {
   const { createWorker, startWorkflow } = helpers(t);
