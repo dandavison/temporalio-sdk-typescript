@@ -621,19 +621,20 @@ export class Activator implements ActivationHandler {
     );
   }
 
-  // Intentionally non-async function so this handler doesn't show up in the stack trace
+  // Intentionally non-async function so this handler doesn't show up in the
+  // stack trace. The user's handler may be a normal function or an async
+  // function.
   protected updateNextHandler({ name, args }: UpdateInput): Promise<unknown> {
-    const { handler } = this.updateHandlers.get(name) ?? {};
-    if (!handler) {
-      throw new IllegalStateError(`No registered update handler for update: ${name}`);
+    const entry = this.updateHandlers.get(name);
+    if (!entry) {
+      return Promise.reject(new IllegalStateError(`No registered update handler for update: ${name}`));
     }
-    return new Promise((resolve, reject) => {
-      try {
-        return resolve(handler(...args));
-      } catch (error) {
-        reject(error);
-      }
-    });
+    const { handler } = entry;
+    try {
+      return Promise.resolve(handler(...args));
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   protected validateUpdateNextHandler({ name, args }: UpdateInput): void {
