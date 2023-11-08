@@ -777,10 +777,7 @@ export class WorkflowClient extends BaseClient {
       workflowId: input.workflowExecution.workflowId,
       workflowRunId: input.workflowExecution.runId,
       result: async () => {
-        // Note that the API guarantees that (response.outcome) <=> (update completed).
-        // Therefore we will not poll during executeUpdate(), since in that case
-        // waitForStage == Completed and so at this point the response has an outcome.
-        const outcome = output.outcome ?? (await this._pollUpdate(output.updateId, input.workflowExecution));
+        const outcome = output.outcome ?? (await this._pollForUpdateOutcome(output.updateId, input.workflowExecution));
         if (outcome.failure) {
           throw new WorkflowUpdateFailedError(
             'Workflow Update failed',
@@ -797,7 +794,7 @@ export class WorkflowClient extends BaseClient {
    * Poll Update until a response with an outcome is received; return that outcome.
    * This is used directly; no interceptor is available.
    */
-  protected async _pollUpdate(
+  protected async _pollForUpdateOutcome(
     updateId: string,
     workflowExecution: temporal.api.common.v1.IWorkflowExecution
   ): Promise<temporal.api.update.v1.IOutcome> {
