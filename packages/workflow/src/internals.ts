@@ -543,20 +543,23 @@ export class Activator implements ActivationHandler {
   }
 
   public doUpdate(activation: coresdk.workflow_activation.IDoUpdate): void {
-    const { id: updateId, name, headers, runValidator } = activation;
+    const { id: updateId, name } = activation;
     if (!updateId) {
       throw new TypeError('Missing activation update id');
     }
     if (!name) {
       throw new TypeError('Missing activation update name');
     }
-    if (!this.updateHandlers.has(name)) {
-      // TODO (dan): Signal is able to handle this situation more gracefully by
-      // using this.bufferedSignals. Should something analogous exist for
-      // Update?
-      this.rejectUpdate(updateId, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
-      return;
-    }
+    new Promise((resolve, reject) => {
+      try {
+        resolve(this._doUpdate(updateId, name, activation));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  public _doUpdate(updateId: string, name: string, activation: coresdk.workflow_activation.IDoUpdate): void {
     const execute = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
 
     const validate = composeInterceptors(
@@ -569,7 +572,7 @@ export class Activator implements ActivationHandler {
       updateId,
       args: arrayFromPayloads(this.payloadConverter, activation.input),
       name,
-      headers: headers ?? {},
+      headers: activation.headers ?? {},
     });
 
     // The implementation below is responsible for upholding, and constrained
@@ -599,7 +602,7 @@ export class Activator implements ActivationHandler {
     // These are caught elsewhere and fail the corresponding activation.
     let input: UpdateInput;
     try {
-      if (runValidator) {
+      if (activation.runValidator) {
         validate(makeInput());
       }
       input = makeInput();
