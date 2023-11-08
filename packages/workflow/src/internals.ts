@@ -627,7 +627,13 @@ export class Activator implements ActivationHandler {
     if (!handler) {
       throw new IllegalStateError(`No registered update handler for update: ${name}`);
     }
-    return handler(...args);
+    return new Promise((resolve, reject) => {
+      try {
+        return resolve(handler(...args));
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   protected validateUpdateNextHandler({ name, args }: UpdateInput): void {
