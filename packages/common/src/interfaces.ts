@@ -4,7 +4,7 @@ export type Payload = temporal.api.common.v1.IPayload;
 
 /** Type that can be returned from a Workflow `execute` function */
 export type WorkflowReturnType = Promise<any>;
-export type WorkflowUpdateType = (...args: any[]) => any;
+export type WorkflowUpdateType = (...args: any[]) => Promise<any> | any;
 export type WorkflowUpdateValidatorType = (...args: any[]) => void;
 export type WorkflowSignalType = (...args: any[]) => Promise<void> | void;
 export type WorkflowQueryType = (...args: any[]) => any;
