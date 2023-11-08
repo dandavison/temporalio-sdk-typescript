@@ -14,7 +14,7 @@ export async function workflowWithUpdates(): Promise<string[]> {
     }
     return state;
   };
-  const doneUpdateHandler = (): void => {
+  const doneUpdateHandler = async (): Promise<void> => {
     state.push('done');
   };
   const validator = (arg: string): void => {

@@ -17,7 +17,7 @@ export async function workflowWithUpdates(): Promise<string[]> {
     }
     return state;
   };
-  const doneUpdateHandler = (): void => {
+  const doneUpdateHandler = async (): Promise<void> => {
     state.push('done');
   };
   const validator = (arg: string): void => {
@@ -40,7 +40,7 @@ export async function workflowWithMutatingValidator(): Promise<string[]> {
     state.push(arg[0]);
     return state;
   };
-  const doneUpdateHandler = (): void => {
+  const doneUpdateHandler = async (): Promise<void> => {
     state.push('done');
   };
   const validator = (arg: [string]): void => {
@@ -202,7 +202,7 @@ export async function counterWorkflow(initialValue: number): Promise<void> {
     count += arg;
   });
   wf.setHandler(getValueQuery, () => count);
-  wf.setHandler(incrementAndGetValueUpdate, (arg: number): number => {
+  wf.setHandler(incrementAndGetValueUpdate, async (arg: number): Promise<number> => {
     count += arg;
     return count;
   });
