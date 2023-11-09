@@ -15,7 +15,7 @@ import {
 } from './types';
 import { CompiledWorkflowOptions, WorkflowUpdateOptions } from './workflow-options';
 
-export { Next, Headers };
+export { Headers, Next };
 
 /** Input for WorkflowClientInterceptor.start */
 export interface WorkflowStartInput {
