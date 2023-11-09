@@ -350,6 +350,11 @@ export interface WorkflowUpdateHandle<Ret> {
   workflowRunId: string;
 
   /**
+   * The ID of the first Run of the Workflow being targeted by this Update request.
+   */
+  firstExecutionRunId?: string;
+
+  /**
    * Return the result of the Update.
    * @throws {@link WorkflowUpdateFailedError} if ApplicationFailure is thrown in the Update handler.
    */
@@ -778,6 +783,7 @@ export class WorkflowClient extends BaseClient {
       updateId,
       workflowId: input.workflowExecution.workflowId,
       workflowRunId,
+      firstExecutionRunId: input.firstExecutionRunId,
       result: async () => {
         const outcome = output.outcome ?? (await this._pollForUpdateOutcome(updateId, input.workflowExecution));
         if (outcome.failure) {
