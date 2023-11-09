@@ -1,4 +1,4 @@
-import { WorkflowUpdateInput, WorkflowUpdateOutput } from '@temporalio/client';
+import { WorkflowStartUpdateInput, WorkflowStartUpdateOutput } from '@temporalio/client';
 import * as wf from '@temporalio/workflow';
 import { Next, UpdateInput, WorkflowInboundCallsInterceptor, WorkflowInterceptors } from '@temporalio/workflow';
 import { helpers, makeTestFunction } from './helpers';
@@ -28,7 +28,7 @@ const test = makeTestFunction({
       interceptors: {
         workflow: [
           {
-            async update(input: WorkflowUpdateInput, next): Promise<WorkflowUpdateOutput> {
+            async update(input: WorkflowStartUpdateInput, next): Promise<WorkflowStartUpdateOutput> {
               return next({ ...input, args: [input.args[0] + '-clientIntercepted', ...input.args.slice(1)] });
             },
           },

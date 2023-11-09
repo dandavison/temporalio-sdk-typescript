@@ -50,8 +50,8 @@ import {
   WorkflowSignalWithStartInput,
   WorkflowStartInput,
   WorkflowTerminateInput,
-  WorkflowUpdateInput,
-  WorkflowUpdateOutput,
+  WorkflowStartUpdateInput,
+  WorkflowStartUpdateOutput,
 } from './interceptors';
 import {
   DescribeWorkflowExecutionResponse,
@@ -735,8 +735,8 @@ export class WorkflowClient extends BaseClient {
    */
   protected async _startUpdateHandler(
     waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage,
-    input: WorkflowUpdateInput
-  ): Promise<WorkflowUpdateOutput> {
+    input: WorkflowStartUpdateInput
+  ): Promise<WorkflowStartUpdateOutput> {
     const updateId = input.options?.updateId ?? uuid4();
     const req: temporal.api.workflowservice.v1.IUpdateWorkflowExecutionRequest = {
       namespace: this.options.namespace,
@@ -769,8 +769,8 @@ export class WorkflowClient extends BaseClient {
   }
 
   protected createWorkflowUpdateHandle<Ret>(
-    input: WorkflowUpdateInput,
-    output: WorkflowUpdateOutput
+    input: WorkflowStartUpdateInput,
+    output: WorkflowStartUpdateOutput
   ): WorkflowUpdateHandle<Ret> {
     return {
       updateId: output.updateId,

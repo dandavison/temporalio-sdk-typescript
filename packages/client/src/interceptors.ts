@@ -26,7 +26,7 @@ export interface WorkflowStartInput {
 }
 
 /** Input for WorkflowClientInterceptor.update */
-export interface WorkflowUpdateInput {
+export interface WorkflowStartUpdateInput {
   readonly updateName: string;
   readonly args: unknown[];
   readonly workflowExecution: WorkflowExecution;
@@ -36,7 +36,7 @@ export interface WorkflowUpdateInput {
 }
 
 /** Output for WorkflowClientInterceptor.update */
-export interface WorkflowUpdateOutput {
+export interface WorkflowStartUpdateOutput {
   readonly updateId: string;
   readonly outcome?: temporal.api.update.v1.IOutcome;
 }
@@ -100,7 +100,7 @@ export interface WorkflowClientInterceptor {
   /**
    * Intercept a service call to updateWorkflowExecution
    */
-  update?: (input: WorkflowUpdateInput, next: Next<this, 'update'>) => Promise<WorkflowUpdateOutput>;
+  update?: (input: WorkflowStartUpdateInput, next: Next<this, 'update'>) => Promise<WorkflowStartUpdateOutput>;
   /**
    * Intercept a service call to signalWorkflowExecution
    *
