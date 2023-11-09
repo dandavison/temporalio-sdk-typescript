@@ -347,7 +347,7 @@ export interface WorkflowUpdateHandle<Ret> {
   /**
    * The ID of the Run of the Workflow being targeted by this Update request.
    */
-  workflowRunId?: string;
+  workflowRunId: string;
 
   /**
    * Return the result of the Update.
@@ -764,6 +764,7 @@ export class WorkflowClient extends BaseClient {
     }
     return {
       updateId,
+      workflowRunId: response.updateRef!.workflowExecution!.runId!,
       outcome: response.outcome ?? undefined,
     };
   }
@@ -772,12 +773,13 @@ export class WorkflowClient extends BaseClient {
     input: WorkflowStartUpdateInput,
     output: WorkflowStartUpdateOutput
   ): WorkflowUpdateHandle<Ret> {
+    const { updateId, workflowRunId } = output;
     return {
-      updateId: output.updateId,
+      updateId,
       workflowId: input.workflowExecution.workflowId,
-      workflowRunId: input.workflowExecution.runId,
+      workflowRunId,
       result: async () => {
-        const outcome = output.outcome ?? (await this._pollForUpdateOutcome(output.updateId, input.workflowExecution));
+        const outcome = output.outcome ?? (await this._pollForUpdateOutcome(updateId, input.workflowExecution));
         if (outcome.failure) {
           throw new WorkflowUpdateFailedError(
             'Workflow Update failed',
