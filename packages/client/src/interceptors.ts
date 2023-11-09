@@ -100,7 +100,10 @@ export interface WorkflowClientInterceptor {
   /**
    * Intercept a service call to updateWorkflowExecution
    */
-  update?: (input: WorkflowStartUpdateInput, next: Next<this, 'update'>) => Promise<WorkflowStartUpdateOutput>;
+  startUpdate?: (
+    input: WorkflowStartUpdateInput,
+    next: Next<this, 'startUpdate'>
+  ) => Promise<WorkflowStartUpdateOutput>;
   /**
    * Intercept a service call to signalWorkflowExecution
    *

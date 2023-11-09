@@ -1030,7 +1030,7 @@ export class WorkflowClient extends BaseClient {
       options?: WorkflowUpdateOptions & { args?: Args }
     ): Promise<WorkflowUpdateHandle<Ret>> => {
       const next = this._startUpdateHandler.bind(this, waitForStage);
-      const fn = composeInterceptors(interceptors, 'update', next);
+      const fn = composeInterceptors(interceptors, 'startUpdate', next);
       const { args, ...opts } = options ?? {};
       const input = {
         workflowExecution: { workflowId, runId },

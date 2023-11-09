@@ -28,7 +28,7 @@ const test = makeTestFunction({
       interceptors: {
         workflow: [
           {
-            async update(input: WorkflowStartUpdateInput, next): Promise<WorkflowStartUpdateOutput> {
+            async startUpdate(input: WorkflowStartUpdateInput, next): Promise<WorkflowStartUpdateOutput> {
               return next({ ...input, args: [input.args[0] + '-clientIntercepted', ...input.args.slice(1)] });
             },
           },
