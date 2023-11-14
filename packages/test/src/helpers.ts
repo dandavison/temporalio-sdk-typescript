@@ -87,6 +87,7 @@ export const bundlerOptions = {
     '@temporalio/worker',
     'ava',
     'crypto',
+    'fs',
     'module',
     'path',
     'stack-utils',

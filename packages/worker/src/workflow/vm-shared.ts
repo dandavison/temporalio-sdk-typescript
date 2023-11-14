@@ -1,7 +1,7 @@
 import v8 from 'node:v8';
 import vm from 'node:vm';
 import { SourceMapConsumer } from 'source-map';
-import { cutoffStackTrace, IllegalStateError } from '@temporalio/common';
+import { cutoffStackTrace, IllegalStateError, logToFile } from '@temporalio/common';
 import { coresdk } from '@temporalio/proto';
 import type { WorkflowInfo, FileLocation } from '@temporalio/workflow';
 import { type SinkCall } from '@temporalio/workflow/lib/sinks';
@@ -303,6 +303,14 @@ export abstract class BaseVMWorkflow implements Workflow {
     if (!activation.jobs) {
       throw new Error('Expected workflow activation jobs to be defined');
     }
+
+    logToFile(
+      `activation.jobs: ${activation.jobs.map(
+        (j) => coresdk.workflow_activation.WorkflowActivationJob.create(j).variant
+      )}`,
+      'worker',
+      'blue'
+    );
 
     // Job processing order
     // 1. patch notifications
