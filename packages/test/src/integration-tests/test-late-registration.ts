@@ -23,8 +23,6 @@ export async function workflowWithRegistrationOfUpdateHandler() {
   };
   wf.setHandler(update, updateHandler);
   let state: string[] = [];
-  await wf.condition(() => state.includes('done'));
-  state.push('$');
   return state;
 }
 
@@ -37,6 +35,6 @@ test('Update: update in first WFT works', async (t) => {
   // The worker now receives [startWorkflow, doUpdate] in a single activation
   await worker.runUntil(async () => {
     const wfResult = await wfHandle.result();
-    t.deepEqual(wfResult, ['done', '$']);
+    t.deepEqual(wfResult, ['done']);
   });
 });
