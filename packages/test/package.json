@@ -9,7 +9,7 @@
     "build:ts": "tsc --build",
     "build:ts-watch": "tsc --build --watch",
     "build:protos": "node ./scripts/compile-proto.js",
-    "test": "ava ./lib/test-*.js ./lib/integration-tests/test-*.js",
+    "test": "ava ./lib/integration-tests/test-late*.js",
     "test.watch": "ava --watch ./lib/test-*.js ./lib/integration-tests/test-*.js"
   },
   "ava": {
