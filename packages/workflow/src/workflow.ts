@@ -46,6 +46,7 @@ import { LocalActivityDoBackoff } from './errors';
 import { assertInWorkflowContext, getActivator, maybeGetActivator } from './global-attributes';
 import { untrackPromise } from './stack-helpers';
 import { ChildWorkflowHandle, ExternalWorkflowHandle } from './workflow-handle';
+import { log } from './logs';
 
 // Avoid a circular dependency
 registerSleepImplementation(sleep);
@@ -1271,3 +1272,8 @@ export function upsertSearchAttributes(searchAttributes: SearchAttributes): void
 
 export const stackTraceQuery = defineQuery<string>('__stack_trace');
 export const enhancedStackTraceQuery = defineQuery<EnhancedStackTrace>('__enhanced_stack_trace');
+
+export function logToFileFromSandbox(msg: string, prefix: string, color: string) {
+  const time: string = new Date().toISOString().slice(11, 23);
+  log.info([`\n(${time} in SANDBOX): ` + msg, prefix, color].join('@@'));
+}

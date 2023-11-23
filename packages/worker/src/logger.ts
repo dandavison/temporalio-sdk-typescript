@@ -1,6 +1,6 @@
 import { formatWithOptions } from 'node:util';
 import { getTimeOfDay } from '@temporalio/core-bridge';
-import { LogLevel, LogMetadata, Logger } from '@temporalio/common';
+import { LogLevel, LogMetadata, Logger, logToFile } from '@temporalio/common';
 
 /** @deprecated Import from @temporalio/common instead */
 export { LogLevel, LogMetadata, Logger };
@@ -25,6 +25,10 @@ const format = formatWithOptions.bind(undefined, { colors: true });
 function defaultLogFunction(entry: LogEntry): void {
   const { level, timestampNanos, message, meta } = entry;
 
+  if (message.includes('@@')) {
+    logToFile.apply(null, message.split('@@') as [string, string, string]);
+    return;
+  }
   const date = new Date(Number(timestampNanos / 1_000_000n));
   if (meta === undefined) {
     process.stderr.write(`${format(date)} [${level}] ${message}\n`);

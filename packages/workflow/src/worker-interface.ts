@@ -6,7 +6,7 @@
 import { IllegalStateError } from '@temporalio/common';
 import { msToTs, tsToMs } from '@temporalio/common/lib/time';
 import { composeInterceptors } from '@temporalio/common/lib/interceptors';
-import type { coresdk } from '@temporalio/proto';
+import { coresdk } from '@temporalio/proto';
 import { disableStorage } from './cancellation-scope';
 import { DeterminismViolationError } from './errors';
 import { WorkflowInterceptorsFactory } from './interceptors';
@@ -14,6 +14,7 @@ import { WorkflowCreateOptionsInternal } from './interfaces';
 import { Activator } from './internals';
 import { setActivatorUntyped, getActivator } from './global-attributes';
 import { type SinkCall } from './sinks';
+import { logToFileFromSandbox } from './workflow';
 
 // Export the type for use on the "worker" side
 export { PromiseStackStore } from './internals';
@@ -248,6 +249,16 @@ export function concludeActivation(): coresdk.workflow_completion.IWorkflowActiv
   const intercept = composeInterceptors(activator.interceptors.internals, 'concludeActivation', (input) => input);
   const { info } = activator;
   const { commands } = intercept({ commands: activator.getAndResetCommands() });
+
+  const commandsString = commands
+    .map((cmd) => coresdk.workflow_commands.WorkflowCommand.create(cmd).variant)
+    .join('\n');
+  logToFileFromSandbox(
+    `commands:\n--------------------------\n${commandsString}\n--------------------------\n`,
+    'worker',
+    'blue'
+  );
+
   return {
     runId: info.runId,
     successful: { commands },

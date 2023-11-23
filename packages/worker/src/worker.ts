@@ -26,6 +26,7 @@ import {
   defaultPayloadConverter,
   IllegalStateError,
   LoadedDataConverter,
+  logToFile,
   mapFromPayloads,
   Payload,
   searchAttributePayloadConverter,
@@ -1005,7 +1006,16 @@ export class Worker {
       logAttributes: Record<string, unknown>;
     }
     return pipe(
-      closeableGroupBy((activation) => activation.runId),
+      closeableGroupBy((activation) => {
+        logToFile(
+          `workflowOperator: activation: ${activation.jobs.map(
+            (j) => coresdk.workflow_activation.WorkflowActivationJob.create(j).variant
+          )}`,
+          'worker',
+          'blue'
+        );
+        return activation.runId;
+      }),
       mergeMap((group$) => {
         return merge(
           group$.pipe(map((activation) => ({ activation, synthetic: false }))),
