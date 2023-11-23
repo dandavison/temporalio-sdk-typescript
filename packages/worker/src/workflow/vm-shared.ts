@@ -312,6 +312,12 @@ export abstract class BaseVMWorkflow implements Workflow {
     //   'blue'
     // );
 
+    // TODO (dan): job sorting here is unnecessary; it is done by core now. The
+    // sorting code here has not been updated to handle Updates, but rather than
+    // updating it, it should be removed. (The partition function is a stable
+    // sort, so it is not necessary to sort for Update here since the order sent
+    // by core is already appropriate.)
+
     // Job processing order
     // 1. patch notifications
     // 2. signals
