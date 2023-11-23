@@ -16,6 +16,7 @@ import {
   ProtoFailure,
   WorkflowUpdateValidatorType,
   ApplicationFailure,
+  logToFile,
 } from '@temporalio/common';
 import { composeInterceptors } from '@temporalio/common/lib/interceptors';
 import { checkExtends } from '@temporalio/common/lib/type-helpers';
@@ -38,6 +39,7 @@ import { type SinkCall } from './sinks';
 import { untrackPromise } from './stack-helpers';
 import pkg from './pkg';
 import { executeWithLifecycleLogging } from './logs';
+import { logToFileFromSandbox } from './workflow';
 
 enum StartChildWorkflowExecutionFailedCause {
   START_CHILD_WORKFLOW_EXECUTION_FAILED_CAUSE_UNSPECIFIED = 0,
@@ -652,6 +654,7 @@ export class Activator implements ActivationHandler {
     }
 
     if (!this.signalHandlers.has(signalName) && !this.defaultSignalHandler) {
+      logToFileFromSandbox('No signal handler, pushing activation\n', 'worker:worker', 'red');
       this.bufferedSignals.push(activation);
       return;
     }
@@ -669,6 +672,9 @@ export class Activator implements ActivationHandler {
   }
 
   public dispatchBufferedSignals(): void {
+    if (this.bufferedSignals.length) {
+      logToFileFromSandbox(`dispatching ${this.bufferedSignals.length} BufferedSignals\n`, 'worker:sdk', 'red');
+    }
     const bufferedSignals = this.bufferedSignals;
     while (bufferedSignals.length) {
       if (this.defaultSignalHandler) {
