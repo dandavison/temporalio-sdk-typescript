@@ -1,5 +1,8 @@
 import * as wf from '@temporalio/workflow';
 import { helpers, makeTestFunction } from './helpers';
+import { WorkflowHandle } from '@temporalio/client';
+import { logToFile } from '@temporalio/common';
+import { temporal } from '@temporalio/proto';
 
 const test = makeTestFunction({
   workflowsPath: __filename,
@@ -191,6 +194,39 @@ test('Update id can be assigned and is present on returned handle', async (t) =>
   });
 });
 
+// The tests below construct scenarios in which doUpdate jobs are packaged
+// together with startWorkflow in the first Activation. We test this because it
+// provides test coverage for Update buffering: were it not for the buffering,
+// we would attempt to start performing the Update (validate and handle) before
+// its handler is set. (Note that sdk-core sorts Update jobs with Signal jobs,
+// i.e. ahead of jobs such as startWorkflow and completeActivity that might
+// result in a setHandler call.)
+
+// TODO: we currently lack a way to ensure, without race conditions, via SDK
+// APIs, that Updates are packaged together with startWorkflow in the first
+// Activation. In lieu of a non-racy implementation, the tests below we do the
+// following:
+// 1. Client sends and awaits startWorkflow.
+// 2. Client sends but does not await executeUpdate.
+// 3. Wait for long enough to be confident that the server handled the
+//    executeUpdate and is now waiting for the Update to advance to Completed.
+// 4. Start the Worker.
+
+test('Two Updates in first WFT', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const wfHandle = await startWorkflow(workflowWithUpdates);
+  wfHandle.executeUpdate(update, { args: ['1'] });
+  wfHandle.executeUpdate(doneUpdate);
+  await new Promise((res) => setTimeout(res, 1000));
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    // Worker receives activation: [doUpdate, doUpdate, startWorkflow]
+    const wfResult = await wfHandle.result();
+    t.deepEqual(wfResult, ['done', 'done-2']);
+    await logHistory(wfHandle);
+  });
+});
+
 /* BEGIN: Test example from WorkflowHandle docstring */
 export const incrementSignal = wf.defineSignal<[number]>('increment');
 export const getValueQuery = wf.defineQuery<number>('getValue');
@@ -227,3 +263,15 @@ test('Update/Signal/Query example in WorkflowHandle docstrings works', async (t)
   });
 });
 /* END: Test example from WorkflowHandle docstring */
+
+async function logHistory(wfHandle: WorkflowHandle) {
+  const events = (await wfHandle.fetchHistory()).events ?? [];
+  const eventsString = events.map(formatEvent).join('\n');
+  logToFile('\n\n' + eventsString, 'test', 'black');
+}
+
+function formatEvent(event: temporal.api.history.v1.IHistoryEvent): string {
+  const ev = temporal.api.history.v1.HistoryEvent.create(event);
+  const eventType = JSON.parse(JSON.stringify(event)).eventType;
+  return `${ev.eventId} ${eventType}`;
+}
