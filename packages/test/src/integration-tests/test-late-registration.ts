@@ -33,12 +33,13 @@ export async function workflowWithRegistrationOfUpdateHandler() {
 
 test('Update: update in first WFT works', async (t) => {
   const { createWorker, startWorkflow } = helpers(t);
-  // Note: there is no worker running
   const wfHandle = await startWorkflow(workflowWithRegistrationOfUpdateHandler);
-  wfHandle.executeUpdate(update, { args: ['done'] });
   const worker = await createWorker();
-  // The worker now receives [startWorkflow, doUpdate] in a single activation
   await worker.runUntil(async () => {
+    // Worker receives activation: [startWorkflow]
+    await new Promise((res) => setTimeout(res, 1000));
+    // Worker receives activation: [doUpdate]
+    await wfHandle.executeUpdate(update, { args: ['done'] });
     const wfResult = await wfHandle.result();
     t.deepEqual(wfResult, ['done']);
     await logHistory(wfHandle);
