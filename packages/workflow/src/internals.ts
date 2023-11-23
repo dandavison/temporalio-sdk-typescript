@@ -106,11 +106,6 @@ export class Activator implements ActivationHandler {
   };
 
   /**
-   * Holds buffered Update calls until a handler is registered
-   */
-  readonly bufferedUpdates = Array<coresdk.workflow_activation.IDoUpdate>();
-
-  /**
    * Holds buffered signal calls until a handler is registered
    */
   readonly bufferedSignals = Array<coresdk.workflow_activation.ISignalWorkflow>();
@@ -551,8 +546,10 @@ export class Activator implements ActivationHandler {
       throw new TypeError('Missing activation update name');
     }
     if (!this.updateHandlers.has(name)) {
-      logToFileFromSandbox('No update handler, pushing activation\n', 'worker:worker', 'red');
-      this.bufferedUpdates.push(activation);
+      // TODO (dan): Signal is able to handle this situation more gracefully by
+      // using this.bufferedSignals. Should something analogous exist for
+      // Update?
+      this.rejectUpdate(updateId, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
       return;
     }
     const execute = composeInterceptors(this.interceptors.inbound, 'handleUpdate', this.updateNextHandler.bind(this));
@@ -690,22 +687,6 @@ export class Activator implements ActivationHandler {
         const [signal] = bufferedSignals.splice(foundIndex, 1);
         this.signalWorkflow(signal);
       }
-    }
-  }
-
-  public dispatchBufferedUpdates(): void {
-    if (this.bufferedUpdates.length) {
-      logToFileFromSandbox(`dispatching ${this.bufferedUpdates.length} BufferedUpdates\n`, 'worker:sdk', 'red');
-    }
-    const bufferedUpdates = this.bufferedUpdates;
-    while (bufferedUpdates.length) {
-      // TODO (dan): this function is a copy of the signal version above with
-      // one tweak on this line; make the two consistent.
-      const foundIndex = bufferedUpdates.findIndex((update) => update.name && this.updateHandlers.has(update.name));
-      if (foundIndex === -1) break;
-      const [update] = bufferedUpdates.splice(foundIndex, 1);
-      logToFileFromSandbox(`dispatching BufferedUpdate\n`, 'worker:sdk', 'blue');
-      this.doUpdate(update);
     }
   }
 

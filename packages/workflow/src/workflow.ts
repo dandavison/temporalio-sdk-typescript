@@ -1165,7 +1165,6 @@ export function setHandler<
     if (typeof handler === 'function') {
       const validator = options?.validator as WorkflowUpdateValidatorType | undefined;
       activator.updateHandlers.set(def.name, { handler, validator });
-      activator.dispatchBufferedUpdates();
     } else if (handler == null) {
       activator.updateHandlers.delete(def.name);
     } else {
