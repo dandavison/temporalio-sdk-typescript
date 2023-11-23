@@ -246,6 +246,7 @@ export function activate(activation: coresdk.workflow_activation.WorkflowActivat
  */
 export function concludeActivation(): coresdk.workflow_completion.IWorkflowActivationCompletion {
   const activator = getActivator();
+  activator.rejectBufferedUpdates();
   const intercept = composeInterceptors(activator.interceptors.internals, 'concludeActivation', (input) => input);
   const { info } = activator;
   const { commands } = intercept({ commands: activator.getAndResetCommands() });
