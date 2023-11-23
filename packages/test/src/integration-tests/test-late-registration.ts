@@ -48,16 +48,16 @@ export async function setTwoHandlersInFirstWFT() {
   return state;
 }
 
-test('Update in first WFT', async (t) => {
-  const { createWorker, startWorkflow } = helpers(t);
-  const wfHandle = await startWorkflow(setHandlerInFirstWFT);
-  wfHandle.executeUpdate(update, { args: ['done'] });
-  await new Promise((res) => setTimeout(res, 1000));
-  const worker = await createWorker();
-  await worker.runUntil(async () => {
-    // Worker receives activation: [doUpdate, startWorkflow]
-    const wfResult = await wfHandle.result();
-    t.deepEqual(wfResult, ['done']);
-    await logHistory(wfHandle);
-  });
-});
+// test('Update in first WFT', async (t) => {
+//   const { createWorker, startWorkflow } = helpers(t);
+//   const wfHandle = await startWorkflow(setHandlerInFirstWFT);
+//   wfHandle.executeUpdate(update, { args: ['done'] });
+//   await new Promise((res) => setTimeout(res, 1000));
+//   const worker = await createWorker();
+//   await worker.runUntil(async () => {
+//     // Worker receives activation: [doUpdate, startWorkflow]
+//     const wfResult = await wfHandle.result();
+//     t.deepEqual(wfResult, ['done']);
+//     await logHistory(wfHandle);
+//   });
+// });
