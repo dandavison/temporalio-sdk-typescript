@@ -69,132 +69,130 @@ export async function workflowWithMutatingValidator(): Promise<string[]> {
   return state;
 }
 
-// test('Update can be executed via executeUpdate()', async (t) => {
-//   const { createWorker, startWorkflow } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithUpdates);
+test('Update can be executed via executeUpdate()', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
 
-//     const updateResult = await wfHandle.executeUpdate(update, { args: ['1'] });
-//     t.deepEqual(updateResult, ['1']);
+    const updateResult = await wfHandle.executeUpdate(update, { args: ['1'] });
+    t.deepEqual(updateResult, ['1']);
 
-//     const doneUpdateResult = await wfHandle.executeUpdate(doneUpdate);
-//     t.is(doneUpdateResult, undefined);
+    const doneUpdateResult = await wfHandle.executeUpdate(doneUpdate);
+    t.is(doneUpdateResult, undefined);
 
-//     const wfResult = await wfHandle.result();
-//     t.deepEqual(wfResult, ['1', 'done', '$']);
-//   });
-// });
-
-// test('Update can be executed via startUpdate() and handle.result()', async (t) => {
-//   const { createWorker, startWorkflow } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithUpdates);
-
-//     const updateHandle = await wfHandle.startUpdate(update, { args: ['1'] });
-//     const updateResult = await updateHandle.result();
-//     t.deepEqual(updateResult, ['1']);
-
-//     const doneUpdateHandle = await wfHandle.startUpdate(doneUpdate);
-//     const doneUpdateResult = await doneUpdateHandle.result();
-//     t.is(doneUpdateResult, undefined);
-
-//     const wfResult = await wfHandle.result();
-//     t.deepEqual(wfResult, ['1', 'done', '$']);
-//   });
-// });
-
-// test('Update validator can reject when using executeUpdate()', async (t) => {
-//   const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithUpdates);
-//     await assertWorkflowUpdateFailed(
-//       wfHandle.executeUpdate(update, { args: ['bad-arg'] }),
-//       wf.ApplicationFailure,
-//       'Validation failed'
-//     );
-//   });
-// });
-
-// test('Update validator can reject when using handle.result() but handle can be obtained without error', async (t) => {
-//   const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithUpdates);
-//     const updateHandle = await wfHandle.startUpdate(update, { args: ['bad-arg'] });
-//     await assertWorkflowUpdateFailed(updateHandle.result(), wf.ApplicationFailure, 'Validation failed');
-//   });
-// });
-
-// test('Update handler does not see mutations to arguments made by validator', async (t) => {
-//   const { createWorker, startWorkflow } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithMutatingValidator);
-//     const updateResult = await wfHandle.executeUpdate(updateWithMutableArg, { args: [['1']] });
-//     t.deepEqual(updateResult, ['1']);
-//   });
-// });
-
-// test('Update: ApplicationFailure in handler rejects the update', async (t) => {
-//   const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithUpdates);
-//     await assertWorkflowUpdateFailed(
-//       wfHandle.executeUpdate(update, { args: ['fail-update'] }),
-//       wf.ApplicationFailure,
-//       'Deliberate ApplicationFailure in handler'
-//     );
-//     await wfHandle.executeUpdate(update, { args: ['done'] });
-//     const wfResult = await wfHandle.result();
-//     t.deepEqual(wfResult, ['fail-update', 'done', '$']);
-//   });
-// });
-
-if (true) {
-  test('Update is rejected if there is no handler', async (t) => {
-    const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
-    const worker = await createWorker();
-    const updateWithoutHandler = wf.defineUpdate<string[], [string]>('updateWithoutHandler');
-    await worker.runUntil(async () => {
-      const wfHandle = await startWorkflow(workflowWithUpdates);
-      await assertWorkflowUpdateFailed(
-        wfHandle.executeUpdate(updateWithoutHandler, { args: [''] }),
-        wf.ApplicationFailure,
-        'Update has no handler: updateWithoutHandler'
-      );
-    });
+    const wfResult = await wfHandle.result();
+    t.deepEqual(wfResult, ['1', 'done', '$']);
   });
-}
+});
 
-// test('Update sent after workflow completed', async (t) => {
-//   const { createWorker, startWorkflow } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithUpdates);
-//     await wfHandle.executeUpdate(doneUpdate);
-//     await wfHandle.result();
-//     try {
-//       await wfHandle.executeUpdate(update, { args: ['1'] });
-//     } catch (err) {
-//       t.true(err instanceof wf.WorkflowNotFoundError);
-//       t.is((err as wf.WorkflowNotFoundError).message, 'workflow execution already completed');
-//     }
-//   });
-// });
+test('Update can be executed via startUpdate() and handle.result()', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
 
-// test('Update id can be assigned and is present on returned handle', async (t) => {
-//   const { createWorker, startWorkflow } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(workflowWithUpdates);
-//     const updateHandle = await wfHandle.startUpdate(doneUpdate, { updateId: 'my-update-id' });
-//     t.is(updateHandle.updateId, 'my-update-id');
-//   });
-// });
+    const updateHandle = await wfHandle.startUpdate(update, { args: ['1'] });
+    const updateResult = await updateHandle.result();
+    t.deepEqual(updateResult, ['1']);
+
+    const doneUpdateHandle = await wfHandle.startUpdate(doneUpdate);
+    const doneUpdateResult = await doneUpdateHandle.result();
+    t.is(doneUpdateResult, undefined);
+
+    const wfResult = await wfHandle.result();
+    t.deepEqual(wfResult, ['1', 'done', '$']);
+  });
+});
+
+test('Update validator can reject when using executeUpdate()', async (t) => {
+  const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+    await assertWorkflowUpdateFailed(
+      wfHandle.executeUpdate(update, { args: ['bad-arg'] }),
+      wf.ApplicationFailure,
+      'Validation failed'
+    );
+  });
+});
+
+test('Update validator can reject when using handle.result() but handle can be obtained without error', async (t) => {
+  const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+    const updateHandle = await wfHandle.startUpdate(update, { args: ['bad-arg'] });
+    await assertWorkflowUpdateFailed(updateHandle.result(), wf.ApplicationFailure, 'Validation failed');
+  });
+});
+
+test('Update handler does not see mutations to arguments made by validator', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithMutatingValidator);
+    const updateResult = await wfHandle.executeUpdate(updateWithMutableArg, { args: [['1']] });
+    t.deepEqual(updateResult, ['1']);
+  });
+});
+
+test('Update: ApplicationFailure in handler rejects the update', async (t) => {
+  const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+    await assertWorkflowUpdateFailed(
+      wfHandle.executeUpdate(update, { args: ['fail-update'] }),
+      wf.ApplicationFailure,
+      'Deliberate ApplicationFailure in handler'
+    );
+    await wfHandle.executeUpdate(update, { args: ['done'] });
+    const wfResult = await wfHandle.result();
+    t.deepEqual(wfResult, ['fail-update', 'done', '$']);
+  });
+});
+
+test('Update is rejected if there is no handler', async (t) => {
+  const { createWorker, startWorkflow, assertWorkflowUpdateFailed } = helpers(t);
+  const worker = await createWorker();
+  const updateWithoutHandler = wf.defineUpdate<string[], [string]>('updateWithoutHandler');
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+    await assertWorkflowUpdateFailed(
+      wfHandle.executeUpdate(updateWithoutHandler, { args: [''] }),
+      wf.ApplicationFailure,
+      'Update has no handler: updateWithoutHandler'
+    );
+  });
+});
+
+test('Update sent after workflow completed', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+    await wfHandle.executeUpdate(doneUpdate);
+    await wfHandle.result();
+    try {
+      await wfHandle.executeUpdate(update, { args: ['1'] });
+    } catch (err) {
+      t.true(err instanceof wf.WorkflowNotFoundError);
+      t.is((err as wf.WorkflowNotFoundError).message, 'workflow execution already completed');
+    }
+  });
+});
+
+test('Update id can be assigned and is present on returned handle', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+    const updateHandle = await wfHandle.startUpdate(doneUpdate, { updateId: 'my-update-id' });
+    t.is(updateHandle.updateId, 'my-update-id');
+  });
+});
 
 // The following tests construct scenarios in which doUpdate jobs are packaged
 // together with startWorkflow in the first Activation. We test this because it
@@ -214,58 +212,57 @@ if (true) {
 //    executeUpdate and is now waiting for the Update to advance to Completed.
 // 4. Start the Worker.
 
-if (false) {
-  test('Two Updates in first WFT', async (t) => {
-    const { createWorker, startWorkflow } = helpers(t);
-    const wfHandle = await startWorkflow(workflowWithUpdates);
-    wfHandle.executeUpdate(update, { args: ['1'] });
-    wfHandle.executeUpdate(doneUpdate);
-    await new Promise((res) => setTimeout(res, 1000));
-    const worker = await createWorker();
-    await worker.runUntil(async () => {
-      // Worker receives activation: [doUpdate, doUpdate, startWorkflow]
-      const wfResult = await wfHandle.result();
-      t.deepEqual(wfResult, ['1', 'done', '$']);
-      await logHistory(wfHandle);
-    });
+test('Two Updates in first WFT', async (t) => {
+  const { createWorker, startWorkflow } = helpers(t);
+  const wfHandle = await startWorkflow(workflowWithUpdates);
+  wfHandle.executeUpdate(update, { args: ['1'] });
+  wfHandle.executeUpdate(doneUpdate);
+  await new Promise((res) => setTimeout(res, 1000));
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    // Worker receives activation: [doUpdate, doUpdate, startWorkflow]
+    const wfResult = await wfHandle.result();
+    t.deepEqual(wfResult, ['1', 'done', '$']);
+    await logHistory(wfHandle);
   });
+});
+
+/* BEGIN: Test example from WorkflowHandle docstring */
+export const incrementSignal = wf.defineSignal<[number]>('increment');
+export const getValueQuery = wf.defineQuery<number>('getValue');
+export const incrementAndGetValueUpdate = wf.defineUpdate<number, [number]>('incrementAndGetValue');
+
+export async function counterWorkflow(initialValue: number): Promise<void> {
+  let count = initialValue;
+  wf.setHandler(incrementSignal, (arg: number) => {
+    count += arg;
+  });
+  wf.setHandler(getValueQuery, () => count);
+  wf.setHandler(incrementAndGetValueUpdate, (arg: number): number => {
+    count += arg;
+    return count;
+  });
+  await wf.condition(() => false);
 }
-// /* BEGIN: Test example from WorkflowHandle docstring */
-// export const incrementSignal = wf.defineSignal<[number]>('increment');
-// export const getValueQuery = wf.defineQuery<number>('getValue');
-// export const incrementAndGetValueUpdate = wf.defineUpdate<number, [number]>('incrementAndGetValue');
 
-// export async function counterWorkflow(initialValue: number): Promise<void> {
-//   let count = initialValue;
-//   wf.setHandler(incrementSignal, (arg: number) => {
-//     count += arg;
-//   });
-//   wf.setHandler(getValueQuery, () => count);
-//   wf.setHandler(incrementAndGetValueUpdate, (arg: number): number => {
-//     count += arg;
-//     return count;
-//   });
-//   await wf.condition(() => false);
-// }
-
-// test('Update/Signal/Query example in WorkflowHandle docstrings works', async (t) => {
-//   const { createWorker, startWorkflow, assertWorkflowFailedError } = helpers(t);
-//   const worker = await createWorker();
-//   await worker.runUntil(async () => {
-//     const wfHandle = await startWorkflow(counterWorkflow, { args: [2] });
-//     await wfHandle.signal(incrementSignal, 2);
-//     const queryResult = await wfHandle.query(getValueQuery);
-//     t.is(queryResult, 4);
-//     const updateResult = await wfHandle.executeUpdate(incrementAndGetValueUpdate, { args: [2] });
-//     t.is(updateResult, 6);
-//     const secondUpdateHandle = await wfHandle.startUpdate(incrementAndGetValueUpdate, { args: [2] });
-//     const secondUpdateResult = await secondUpdateHandle.result();
-//     t.is(secondUpdateResult, 8);
-//     await wfHandle.cancel();
-//     await assertWorkflowFailedError(wfHandle.result(), wf.CancelledFailure);
-//   });
-// });
-// /* END: Test example from WorkflowHandle docstring */
+test('Update/Signal/Query example in WorkflowHandle docstrings works', async (t) => {
+  const { createWorker, startWorkflow, assertWorkflowFailedError } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(counterWorkflow, { args: [2] });
+    await wfHandle.signal(incrementSignal, 2);
+    const queryResult = await wfHandle.query(getValueQuery);
+    t.is(queryResult, 4);
+    const updateResult = await wfHandle.executeUpdate(incrementAndGetValueUpdate, { args: [2] });
+    t.is(updateResult, 6);
+    const secondUpdateHandle = await wfHandle.startUpdate(incrementAndGetValueUpdate, { args: [2] });
+    const secondUpdateResult = await secondUpdateHandle.result();
+    t.is(secondUpdateResult, 8);
+    await wfHandle.cancel();
+    await assertWorkflowFailedError(wfHandle.result(), wf.CancelledFailure);
+  });
+});
+/* END: Test example from WorkflowHandle docstring */
 
 async function logHistory(wfHandle: WorkflowHandle) {
   const events = (await wfHandle.fetchHistory()).events ?? [];
