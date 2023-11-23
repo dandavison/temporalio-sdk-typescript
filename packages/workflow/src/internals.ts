@@ -538,6 +538,7 @@ export class Activator implements ActivationHandler {
   }
 
   public doUpdate(activation: coresdk.workflow_activation.IDoUpdate): void {
+    logToFileFromSandbox('Activator.doUpdate()', 'worker', 'blue');
     const { id: updateId, name, headers, runValidator } = activation;
     if (!updateId) {
       throw new TypeError('Missing activation update id');
@@ -549,6 +550,7 @@ export class Activator implements ActivationHandler {
       // TODO (dan): Signal is able to handle this situation more gracefully by
       // using this.bufferedSignals. Should something analogous exist for
       // Update?
+      logToFileFromSandbox('Missing Update handler', 'worker', 'red');
       this.rejectUpdate(updateId, ApplicationFailure.nonRetryable(`Update has no handler: ${name}`));
       return;
     }
