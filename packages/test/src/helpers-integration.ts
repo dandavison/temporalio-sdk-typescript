@@ -1,10 +1,12 @@
 import { randomUUID } from 'crypto';
 import { ErrorConstructor, ExecutionContext, TestFn } from 'ava';
+import { status as grpcStatus } from '@grpc/grpc-js';
 import {
   WorkflowFailedError,
   WorkflowHandle,
   WorkflowStartOptions,
   WorkflowUpdateFailedError,
+  isGrpcServiceError,
 } from '@temporalio/client';
 import {
   LocalTestWorkflowEnvironmentOptions,
@@ -22,6 +24,7 @@ import {
 import * as workflow from '@temporalio/workflow';
 import { ConnectionInjectorInterceptor } from './activities/interceptors';
 import { Worker, test as anyTest, bundlerOptions } from './helpers';
+import { temporal } from '@temporalio/proto';
 
 export interface Context {
   env: TestWorkflowEnvironment;
@@ -67,6 +70,7 @@ export interface Helpers {
     fn: T,
     opts: Omit<WorkflowStartOptions<T>, 'taskQueue' | 'workflowId'>
   ): Promise<WorkflowHandle<T>>;
+  waitForUpdateToBeAdmitted(updateRef: temporal.api.update.v1.IUpdateRef): Promise<void>;
   assertWorkflowUpdateFailed(p: Promise<any>, errorConstructor: ErrorConstructor, message?: string): Promise<void>;
   assertWorkflowFailedError(p: Promise<any>, errorConstructor: ErrorConstructor, message?: string): Promise<void>;
 }
@@ -107,6 +111,20 @@ export function helpers(t: ExecutionContext<Context>): Helpers {
         workflowId: randomUUID(),
         ...opts,
       });
+    },
+    async waitForUpdateToBeAdmitted(updateRef: temporal.api.update.v1.IUpdateRef): Promise<void> {
+      for (;;) {
+        try {
+          await t.context.env.client.workflowService.pollWorkflowExecutionUpdate({ updateRef, namespace: 'default' });
+          return;
+        } catch (err) {
+          if (isGrpcServiceError(err) && err.code == grpcStatus.NOT_FOUND) {
+            await new Promise((res) => setTimeout(res, 50));
+          } else {
+            throw err;
+          }
+        }
+      }
     },
     async assertWorkflowUpdateFailed(
       p: Promise<any>,
