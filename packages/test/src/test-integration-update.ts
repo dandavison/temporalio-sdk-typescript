@@ -4,11 +4,11 @@ import { helpers, makeTestFunction } from './helpers-integration';
 const test = makeTestFunction({
   workflowsPath: __filename,
   workflowEnvironmentOpts: {
-    // TODO: remove this server config when default test server supports update
+    // FIXME: requires a server release for https://github.com/temporalio/temporal/pull/5114
     server: {
       executable: {
-        type: 'cached-download',
-        version: 'latest',
+        type: 'existing-path',
+        path: '/Users/dan/src/temporalio/cli/temporal',
       },
     },
   },
@@ -202,16 +202,6 @@ test('Update id can be assigned and is present on returned handle', async (t) =>
 // because they are doing something similar to what this test does to achieve
 // that.
 
-// TODO: we currently lack a way to ensure, without race conditions, via SDK
-// APIs, that Updates are packaged together with startWorkflow in the first
-// Activation. In lieu of a non-racy implementation, the test below does the
-// following:
-// 1. Client sends and awaits startWorkflow.
-// 2. Client sends but does not await executeUpdate.
-// 3. Wait for long enough to be confident that the server handled the
-//    executeUpdate and is now waiting for the Update to advance to Completed.
-// 4. Start the Worker.
-
 const stateMutatingUpdate = wf.defineUpdate('stateMutatingUpdate');
 
 export async function setUpdateHandlerAndExit(): Promise<string> {
@@ -225,15 +215,16 @@ export async function setUpdateHandlerAndExit(): Promise<string> {
 }
 
 test('Update is always delivered', async (t) => {
-  const { createWorker, startWorkflow } = helpers(t);
+  const { createWorker, startWorkflow, waitForUpdateToBeAdmitted } = helpers(t);
   const wfHandle = await startWorkflow(setUpdateHandlerAndExit);
 
-  // Race condition: wait long enough for the Update to have been admitted, so
-  // that it is in the first WFT, along with startWorkflow.
+  const updateId = 'state-mutating-update';
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  wfHandle.executeUpdate(stateMutatingUpdate);
-  await new Promise((res) => setTimeout(res, 1000));
-
+  wfHandle.executeUpdate(stateMutatingUpdate, { updateId });
+  await waitForUpdateToBeAdmitted({
+    updateId,
+    workflowExecution: { workflowId: wfHandle.workflowId },
+  });
   const worker = await createWorker();
   await worker.runUntil(async () => {
     // Worker receives activation: [doUpdate, startWorkflow]
@@ -243,17 +234,20 @@ test('Update is always delivered', async (t) => {
 });
 
 test('Two Updates in first WFT', async (t) => {
-  const { createWorker, startWorkflow } = helpers(t);
+  const { createWorker, startWorkflow, waitForUpdateToBeAdmitted } = helpers(t);
   const wfHandle = await startWorkflow(workflowWithUpdates);
 
-  // Race condition: wait long enough for the Updates to have been admitted, so
-  // that they are in the first WFT, along with startWorkflow.
+  const [updateId1, updateId2] = ['update-1', 'update-2'];
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  wfHandle.executeUpdate(update, { args: ['1'] });
+  wfHandle.executeUpdate(update, { args: ['1'], updateId: updateId1 });
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  wfHandle.executeUpdate(doneUpdate);
-  await new Promise((res) => setTimeout(res, 1000));
-
+  wfHandle.executeUpdate(doneUpdate, { updateId: updateId2 });
+  for (const updateId of [updateId1, updateId2]) {
+    await waitForUpdateToBeAdmitted({
+      updateId,
+      workflowExecution: { workflowId: wfHandle.workflowId },
+    });
+  }
   const worker = await createWorker();
   await worker.runUntil(async () => {
     // Worker receives activation: [doUpdate, doUpdate, startWorkflow]. The
