@@ -1,5 +1,5 @@
 import { status as grpcStatus } from '@grpc/grpc-js';
-import { isGrpcServiceError } from '@temporalio/client';
+import { WorkflowStartPolicy, isGrpcServiceError } from '@temporalio/client';
 import * as wf from '@temporalio/workflow';
 import { helpers, makeTestFunction } from './helpers-integration';
 
@@ -374,6 +374,80 @@ test('Update handler is called at same point during first execution and replay',
     // handler was invoked during replay _after_ advancing workflow code (which
     // would violate workflow determinism), then this would not pass.
     t.is(handlerWasExecutedEarly, true);
+  });
+});
+
+test('Can update not-running workflow iff start policy is IF_NOT_RUNNING or ALWAYS', async (t) => {
+  const { createWorker, taskQueue } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const client = t.context.env.client.workflow;
+
+    // An update of a not-running workflow fails by default.
+    const notRunningWorkflowId = wf.uuid4();
+    const wfHandle = client.getHandle(notRunningWorkflowId);
+    await t.throwsAsync(wfHandle.executeUpdate(update, { args: ['1'] }), {
+      instanceOf: wf.WorkflowNotFoundError,
+    });
+    await t.throwsAsync(wfHandle.result(), {
+      instanceOf: wf.WorkflowNotFoundError,
+    });
+
+    // An update of a not-running workflow succeeds with
+    // WorkflowStartPolicy.IF_NOT_RUNNING or WorkflowStartPolicy.ALWAYS.
+    for (const startPolicy of [WorkflowStartPolicy.IF_NOT_RUNNING, WorkflowStartPolicy.ALWAYS]) {
+      const notRunningWorkflowId = wf.uuid4();
+      const wfHandle = client.getHandle(notRunningWorkflowId);
+      await t.throwsAsync(wfHandle.result(), {
+        instanceOf: wf.WorkflowNotFoundError,
+      });
+      const updateResult = await wfHandle.executeUpdate(update, {
+        args: ['1'],
+        workflowStartOptions: {
+          workflowTypeOrFunc: workflowWithUpdates,
+          startPolicy,
+          startOptions: { taskQueue },
+        },
+      });
+      t.deepEqual(updateResult, ['1']);
+      await wfHandle.executeUpdate(doneUpdate);
+      const wfResult = await wfHandle.result();
+      t.deepEqual(wfResult, ['1', 'done', '$']);
+    }
+  });
+});
+
+test('Can update running workflow iff start policy is default or IF_NOT_RUNNING', async (t) => {
+  const { createWorker, startWorkflow, taskQueue } = helpers(t);
+  const worker = await createWorker();
+  await worker.runUntil(async () => {
+    const wfHandle = await startWorkflow(workflowWithUpdates);
+
+    // An update of a running workflow succeeds with WorkflowStartPolicy.IF_NOT_RUNNING.
+    const updateResult = await wfHandle.executeUpdate(update, {
+      args: ['1'],
+      workflowStartOptions: {
+        workflowTypeOrFunc: workflowWithUpdates,
+        startPolicy: WorkflowStartPolicy.IF_NOT_RUNNING,
+        startOptions: { taskQueue },
+      },
+    });
+    t.deepEqual(updateResult, ['1']);
+
+    // An update of a running workflow fails with WorkflowStartPolicy.ALWAYS.
+    await t.throwsAsync(
+      wfHandle.executeUpdate(update, {
+        args: ['1'],
+        workflowStartOptions: {
+          workflowTypeOrFunc: workflowWithUpdates,
+          startPolicy: WorkflowStartPolicy.ALWAYS,
+          startOptions: { taskQueue },
+        },
+      }),
+      {
+        instanceOf: wf.WorkflowExecutionAlreadyStartedError,
+      }
+    );
   });
 });
 

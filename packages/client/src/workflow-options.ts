@@ -65,8 +65,20 @@ export function compileWorkflowOptions<T extends WorkflowOptions>(options: T): W
   };
 }
 
-export interface WorkflowUpdateOptions {
+export enum WorkflowStartPolicy {
+  IF_NOT_RUNNING = 0,
+  ALWAYS,
+}
+
+export interface WorkflowUpdateWorkflowStartOptions<T extends Workflow> {
+  readonly workflowTypeOrFunc: string | T;
+  readonly startPolicy: WorkflowStartPolicy;
+  readonly startOptions: Omit<WorkflowStartOptions<T>, 'workflowId'>;
+}
+
+export interface WorkflowUpdateOptions<T extends Workflow> {
   readonly updateId?: string;
+  readonly workflowStartOptions?: WorkflowUpdateWorkflowStartOptions<T>;
 }
 
 export type WorkflowSignalWithStartOptions<SignalArgs extends any[] = []> = SignalArgs extends [any, ...any[]]

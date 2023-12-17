@@ -66,6 +66,7 @@ import {
 } from './types';
 import {
   compileWorkflowOptions,
+  WorkflowStartPolicy,
   WorkflowOptions,
   WorkflowSignalWithStartOptions,
   WorkflowStartOptions,
@@ -129,12 +130,12 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
    */
   executeUpdate<Ret, Args extends [any, ...any[]], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options: WorkflowUpdateOptions & { args: Args }
+    options: WorkflowUpdateOptions<T> & { args: Args }
   ): Promise<Ret>;
 
   executeUpdate<Ret, Args extends [], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options?: WorkflowUpdateOptions & { args?: Args }
+    options?: WorkflowUpdateOptions<T> & { args?: Args }
   ): Promise<Ret>;
 
   /**
@@ -156,12 +157,12 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
    */
   startUpdate<Ret, Args extends [any, ...any[]], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options: WorkflowUpdateOptions & { args: Args }
+    options: WorkflowUpdateOptions<T> & { args: Args }
   ): Promise<WorkflowUpdateHandle<Ret>>;
 
   startUpdate<Ret, Args extends [], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options?: WorkflowUpdateOptions & { args?: Args }
+    options?: WorkflowUpdateOptions<T> & { args?: Args }
   ): Promise<WorkflowUpdateHandle<Ret>>;
 
   /**
@@ -1054,7 +1055,7 @@ export class WorkflowClient extends BaseClient {
     const _startUpdate = async <Ret, Args extends unknown[]>(
       def: UpdateDefinition<Ret, Args> | string,
       waitForStage: temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage,
-      options?: WorkflowUpdateOptions & { args?: Args }
+      options?: WorkflowUpdateOptions<T> & { args?: Args }
     ): Promise<WorkflowUpdateHandle<Ret>> => {
       const next = this._startUpdateHandler.bind(this, waitForStage);
       const fn = composeInterceptors(interceptors, 'startUpdate', next);
@@ -1075,6 +1076,33 @@ export class WorkflowClient extends BaseClient {
         output.workflowRunId,
         output.outcome
       );
+    };
+    // This is throwaway code that only exists to facilitate experimental
+    // sketching out of SDK update/start-workflow APIs.
+    // TODO: modify UpdateWorkflowExecution gRPC API to start workflow given WorkflowStartOptions.
+    const _fakeHonorWorkflowStartPolicy = async (updateOptions?: WorkflowUpdateOptions<T>): Promise<void> => {
+      if (!updateOptions?.workflowStartOptions) {
+        // The UpdateWorkflowExecution gRPC API returns an error if the
+        // workflow is not running, so nothing is needed here.
+        return;
+      }
+      // The WorkflowStartPolicy is either IF_NOT_RUNNING or ALWAYS. Try to start the workflow.
+      const { startPolicy, workflowTypeOrFunc } = updateOptions.workflowStartOptions;
+      const startOptions = { workflowId, ...updateOptions.workflowStartOptions.startOptions } as WorkflowStartOptions;
+      assertRequiredWorkflowOptions(startOptions);
+      try {
+        await this.start(workflowTypeOrFunc, startOptions);
+      } catch (error) {
+        if (
+          error instanceof WorkflowExecutionAlreadyStartedError &&
+          startPolicy == WorkflowStartPolicy.IF_NOT_RUNNING
+        ) {
+          // Not an error: policy is IF_NOT_RUNNING and workflow already exists.
+          return;
+        } else {
+          throw error;
+        }
+      }
     };
 
     return {
@@ -1130,8 +1158,9 @@ export class WorkflowClient extends BaseClient {
       },
       async startUpdate<Ret, Args extends any[]>(
         def: UpdateDefinition<Ret, Args> | string,
-        options?: WorkflowUpdateOptions & { args?: Args }
+        options?: WorkflowUpdateOptions<T> & { args?: Args }
       ): Promise<WorkflowUpdateHandle<Ret>> {
+        await _fakeHonorWorkflowStartPolicy(options);
         return await _startUpdate(
           def,
           temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage
@@ -1141,8 +1170,9 @@ export class WorkflowClient extends BaseClient {
       },
       async executeUpdate<Ret, Args extends any[]>(
         def: UpdateDefinition<Ret, Args> | string,
-        options?: WorkflowUpdateOptions & { args?: Args }
+        options?: WorkflowUpdateOptions<T> & { args?: Args }
       ): Promise<Ret> {
+        await _fakeHonorWorkflowStartPolicy(options);
         const handle = await _startUpdate(
           def,
           temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage
