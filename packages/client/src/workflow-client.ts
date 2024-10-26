@@ -539,10 +539,10 @@ export class WorkflowClient extends BaseClient {
    *
    * @returns a WorkflowHandle to the started Workflow
    */
-  public async start<T extends Workflow>(
+  public async start<T extends Workflow, L extends boolean = false>(
     workflowTypeOrFunc: string | T,
-    options: WorkflowStartOptions<T>
-  ): Promise<WorkflowHandleWithFirstExecutionRunId<T>> {
+    options: WorkflowStartOptions<T> & { lazy?: L }
+  ): Promise<L extends true ? WorkflowHandle<T> : WorkflowHandleWithFirstExecutionRunId<T>> {
     const { workflowId, lazy } = options;
     if (lazy) {
       return this._createWorkflowHandle({
@@ -554,7 +554,7 @@ export class WorkflowClient extends BaseClient {
         followRuns: options.followRuns ?? true,
         lazyStartWorkflowTypeOrFunc: workflowTypeOrFunc,
         lazyStartOptions: options,
-      }) as WorkflowHandleWithFirstExecutionRunId<T>; // TODO: this type is a lie
+      }) as any;
     }
     const interceptors = this.getOrMakeInterceptors(workflowId);
     const runId = await this._start(workflowTypeOrFunc, { ...options, workflowId }, interceptors);
