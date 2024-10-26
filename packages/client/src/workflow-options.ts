@@ -41,6 +41,16 @@ export interface WorkflowOptions extends CommonWorkflowOptions {
    *
    */
   startDelay?: Duration;
+
+  /**
+   * If set to true, `await client.workflow.start(...)` does not start the workflow, but returns a
+   * handle containing the parameters needed to start the workflow. executeUpdate called on the
+   * returned handle will perform "update-with-start", i.e. it will issue a MultiOp gRPC request.
+   * This request will start the workflow if it doesn't exist, subject to workflowIdConflictPolicy.
+   *
+   * @default false
+   */
+  lazy?: boolean;
 }
 
 export type WithCompiledWorkflowOptions<T extends WorkflowOptions> = Replace<
@@ -65,7 +75,7 @@ export function compileWorkflowOptions<T extends WorkflowOptions>(options: T): W
   };
 }
 
-export interface WorkflowUpdateOptions {
+export interface WorkflowUpdateOptions<T extends Workflow> {
   /**
    * The Update Id, which is a unique-per-Workflow-Execution identifier for this Update.
    *
@@ -75,6 +85,16 @@ export interface WorkflowUpdateOptions {
    * Update.
    */
   readonly updateId?: string;
+
+  /**
+   * Options for starting a Workflow ("Update-With-Start").
+   *
+   * Example uses:
+   * - Update a Workflow that may or may not already be running (see {@link WorkflowIdReusePolicy})
+   * - Execute an Update and start the Workflow in the same call
+   */
+  readonly workflowStartTypeOrFunc?: string | T;
+  readonly workflowStartOptions?: WorkflowStartOptions<T>;
 }
 
 export type WorkflowSignalWithStartOptions<SignalArgs extends any[] = []> = SignalArgs extends [any, ...any[]]

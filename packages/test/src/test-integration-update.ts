@@ -45,6 +45,18 @@ export async function workflowWithUpdates(): Promise<string[]> {
   return state;
 }
 
+test('Can issue multiop request via executeUpdate on a lazy handle', async (t) => {
+  const client = t.context.env.client;
+  const lazyHandle = client.workflow.start(workflowWithUpdates, {
+    taskQueue: 'hello-world',
+    args: [],
+    workflowId: 'uws-wf-id',
+  });
+
+  const updResult = await lazyHandle.then((wfHandle) => wfHandle.executeUpdate(update, { args: ['1'] }));
+  t.deepEqual(updResult, ['1']);
+});
+
 test('Update can be executed via executeUpdate()', async (t) => {
   const { createWorker, startWorkflow } = helpers(t);
   const worker = await createWorker();
