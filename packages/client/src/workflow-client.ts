@@ -535,16 +535,6 @@ export class WorkflowClient extends BaseClient {
   }
 
   /**
-   * Start a new Workflow Execution.
-   *
-   * @returns a WorkflowHandle to the started Workflow
-   */
-  public async start<T extends Workflow>(
-    workflowTypeOrFunc: string | T,
-    options: WorkflowStartOptions<T>
-  ): Promise<WorkflowHandleWithFirstExecutionRunId<T>>;
-
-  /**
    * Create a handle to a lazily-started Workflow Execution.
    *
    * The Workflow Execution will be started (subject to {@link WorkflowIdConflictPolicy})
@@ -556,6 +546,16 @@ export class WorkflowClient extends BaseClient {
     workflowTypeOrFunc: string | T,
     options: WorkflowStartOptions<T> & { lazy: true }
   ): WorkflowHandle<T>;
+
+  /**
+   * Start a new Workflow Execution.
+   *
+   * @returns a WorkflowHandle to the started Workflow
+   */
+  public async start<T extends Workflow>(
+    workflowTypeOrFunc: string | T,
+    options: WorkflowStartOptions<T>
+  ): Promise<WorkflowHandleWithFirstExecutionRunId<T>>;
 
   start<T extends Workflow, L extends boolean = false>(
     workflowTypeOrFunc: string | T,
