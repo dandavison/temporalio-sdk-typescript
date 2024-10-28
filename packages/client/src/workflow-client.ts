@@ -539,10 +539,10 @@ export class WorkflowClient extends BaseClient {
    *
    * @returns a WorkflowHandle to the started Workflow
    */
-  public async start<T extends Workflow, L extends boolean = false>(
+  public start<T extends Workflow, L extends boolean = false>(
     workflowTypeOrFunc: string | T,
     options: WorkflowStartOptions<T> & { lazy?: L }
-  ): Promise<L extends true ? WorkflowHandle<T> : WorkflowHandleWithFirstExecutionRunId<T>> {
+  ): L extends true ? WorkflowHandle<T> : Promise<WorkflowHandleWithFirstExecutionRunId<T>> {
     const { workflowId, lazy } = options;
     if (lazy) {
       return this._createWorkflowHandle({
@@ -555,21 +555,26 @@ export class WorkflowClient extends BaseClient {
         lazyStartWorkflowTypeOrFunc: workflowTypeOrFunc,
         lazyStartOptions: options,
       }) as any;
+    } else {
+      const interceptors = this.getOrMakeInterceptors(workflowId);
+      const runId = this._start(workflowTypeOrFunc, { ...options, workflowId }, interceptors);
+      // runId is not used in handles created with `start*` calls because these
+      // handles should allow interacting with the workflow if it continues as new.
+      const handle = runId.then((runId) => {
+        const handle = this._createWorkflowHandle({
+          workflowId,
+          runId: undefined,
+          firstExecutionRunId: runId,
+          runIdForResult: runId,
+          interceptors,
+          followRuns: options.followRuns ?? true,
+        }) as WorkflowHandleWithFirstExecutionRunId<T>;
+        // Cast is safe because we know we add the firstExecutionRunId below
+        (handle as any) /* readonly */.firstExecutionRunId = runId;
+        return handle;
+      });
+      return handle;
     }
-    const interceptors = this.getOrMakeInterceptors(workflowId);
-    const runId = await this._start(workflowTypeOrFunc, { ...options, workflowId }, interceptors);
-    // runId is not used in handles created with `start*` calls because these
-    // handles should allow interacting with the workflow if it continues as new.
-    const handle = this._createWorkflowHandle({
-      workflowId,
-      runId: undefined,
-      firstExecutionRunId: runId,
-      runIdForResult: runId,
-      interceptors,
-      followRuns: options.followRuns ?? true,
-    }) as WorkflowHandleWithFirstExecutionRunId<T>; // Cast is safe because we know we add the firstExecutionRunId below
-    (handle as any) /* readonly */.firstExecutionRunId = runId;
-    return handle;
   }
 
   /**
