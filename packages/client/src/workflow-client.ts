@@ -535,14 +535,32 @@ export class WorkflowClient extends BaseClient {
   }
 
   /**
-   * Start a new Workflow execution.
+   * Start a new Workflow Execution.
    *
    * @returns a WorkflowHandle to the started Workflow
    */
-  public start<T extends Workflow, L extends boolean = false>(
+  public async start<T extends Workflow>(
+    workflowTypeOrFunc: string | T,
+    options: WorkflowStartOptions<T> & { lazy?: false }
+  ): Promise<WorkflowHandleWithFirstExecutionRunId<T>>;
+
+  /**
+   * Create a handle to a lazily-started Workflow Execution.
+   *
+   * The Workflow Execution will be started (subject to {@link WorkflowIdConflictPolicy})
+   * when a request is subsequently issued via this handle.
+   *
+   * @returns a WorkflowHandle to the started Workflow
+   */
+  public start<T extends Workflow>(
+    workflowTypeOrFunc: string | T,
+    options: WorkflowStartOptions<T> & { lazy: true }
+  ): WorkflowHandle<T>;
+
+  start<T extends Workflow, L extends boolean = false>(
     workflowTypeOrFunc: string | T,
     options: WorkflowStartOptions<T> & { lazy?: L }
-  ): L extends true ? WorkflowHandle<T> : Promise<WorkflowHandleWithFirstExecutionRunId<T>> {
+  ): Promise<WorkflowHandleWithFirstExecutionRunId<T>> | WorkflowHandle<T> {
     const { workflowId, lazy } = options;
     if (lazy) {
       return this._createWorkflowHandle({
@@ -557,10 +575,9 @@ export class WorkflowClient extends BaseClient {
       }) as any;
     } else {
       const interceptors = this.getOrMakeInterceptors(workflowId);
-      const runId = this._start(workflowTypeOrFunc, { ...options, workflowId }, interceptors);
       // runId is not used in handles created with `start*` calls because these
       // handles should allow interacting with the workflow if it continues as new.
-      const handle = runId.then((runId) => {
+      return this._start(workflowTypeOrFunc, { ...options, workflowId }, interceptors).then((runId) => {
         const handle = this._createWorkflowHandle({
           workflowId,
           runId: undefined,
@@ -568,12 +585,11 @@ export class WorkflowClient extends BaseClient {
           runIdForResult: runId,
           interceptors,
           followRuns: options.followRuns ?? true,
+          // Cast is safe because we know we add the firstExecutionRunId below
         }) as WorkflowHandleWithFirstExecutionRunId<T>;
-        // Cast is safe because we know we add the firstExecutionRunId below
         (handle as any) /* readonly */.firstExecutionRunId = runId;
         return handle;
       });
-      return handle;
     }
   }
 
