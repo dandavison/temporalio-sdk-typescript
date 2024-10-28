@@ -541,7 +541,7 @@ export class WorkflowClient extends BaseClient {
    */
   public async start<T extends Workflow>(
     workflowTypeOrFunc: string | T,
-    options: WorkflowStartOptions<T> & { lazy?: false }
+    options: WorkflowStartOptions<T>
   ): Promise<WorkflowHandleWithFirstExecutionRunId<T>>;
 
   /**

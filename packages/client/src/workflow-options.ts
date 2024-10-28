@@ -47,10 +47,8 @@ export interface WorkflowOptions extends CommonWorkflowOptions {
    * handle containing the parameters needed to start the workflow. executeUpdate called on the
    * returned handle will perform "update-with-start", i.e. it will issue a MultiOp gRPC request.
    * This request will start the workflow if it doesn't exist, subject to workflowIdConflictPolicy.
-   *
-   * @default false
    */
-  lazy?: boolean;
+  lazy?: true;
 }
 
 export type WithCompiledWorkflowOptions<T extends WorkflowOptions> = Replace<
