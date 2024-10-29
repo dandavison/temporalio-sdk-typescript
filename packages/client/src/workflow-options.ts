@@ -65,7 +65,7 @@ export function compileWorkflowOptions<T extends WorkflowOptions>(options: T): W
   };
 }
 
-export interface WorkflowUpdateOptions {
+export interface WorkflowUpdateOptions<T extends Workflow> {
   /**
    * The Update Id, which is a unique-per-Workflow-Execution identifier for this Update.
    *
@@ -75,6 +75,16 @@ export interface WorkflowUpdateOptions {
    * Update.
    */
   readonly updateId?: string;
+
+  /**
+   * Options for starting a Workflow ("Update-With-Start").
+   *
+   * Example uses:
+   * - Update a Workflow that may or may not already be running (see {@link WorkflowIdReusePolicy})
+   * - Execute an Update and start the Workflow in the same call
+   */
+  readonly workflowStartTypeOrFunc?: string | T;
+  readonly workflowStartOptions?: WorkflowStartOptions<T>;
 }
 
 export type WorkflowSignalWithStartOptions<SignalArgs extends any[] = []> = SignalArgs extends [any, ...any[]]

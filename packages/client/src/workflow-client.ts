@@ -133,12 +133,12 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
    */
   executeUpdate<Ret, Args extends [any, ...any[]], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options: WorkflowUpdateOptions & { args: Args }
+    options: WorkflowUpdateOptions<T> & { args: Args }
   ): Promise<Ret>;
 
   executeUpdate<Ret, Args extends [], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options?: WorkflowUpdateOptions & { args?: Args }
+    options?: WorkflowUpdateOptions<T> & { args?: Args }
   ): Promise<Ret>;
 
   /**
@@ -175,7 +175,7 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
    */
   startUpdate<Ret, Args extends [any, ...any[]], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options: WorkflowUpdateOptions & {
+    options: WorkflowUpdateOptions<T> & {
       args: Args;
       waitForStage: WorkflowUpdateStage.ACCEPTED;
     }
@@ -183,7 +183,7 @@ export interface WorkflowHandle<T extends Workflow = Workflow> extends BaseWorkf
 
   startUpdate<Ret, Args extends [], Name extends string = string>(
     def: UpdateDefinition<Ret, Args, Name> | string,
-    options: WorkflowUpdateOptions & {
+    options: WorkflowUpdateOptions<T> & {
       args?: Args;
       waitForStage: WorkflowUpdateStage.ACCEPTED;
     }
@@ -295,11 +295,14 @@ function defaultWorkflowClientOptions(): WithDefaults<WorkflowClientOptions> {
   };
 }
 
-function assertRequiredWorkflowOptions(opts: WorkflowOptions): void {
-  if (!opts.taskQueue) {
+function assertRequiredWorkflowOptions(opts?: {
+  taskQueue?: string;
+  workflowId?: string;
+}): asserts opts is WorkflowOptions {
+  if (!opts?.taskQueue) {
     throw new TypeError('Missing WorkflowOptions.taskQueue');
   }
-  if (!opts.workflowId) {
+  if (!opts?.workflowId) {
     throw new TypeError('Missing WorkflowOptions.workflowId');
   }
 }
@@ -340,7 +343,7 @@ export interface GetWorkflowHandleOptions extends WorkflowResultOptions {
   firstExecutionRunId?: string;
 }
 
-interface WorkflowHandleOptions extends GetWorkflowHandleOptions {
+interface WorkflowHandleOptions<T extends Workflow> extends GetWorkflowHandleOptions {
   workflowId: string;
   runId?: string;
   interceptors: WorkflowClientInterceptor[];
@@ -352,6 +355,11 @@ interface WorkflowHandleOptions extends GetWorkflowHandleOptions {
    * - When creating a handle using `signalWithStart`, uses the the returned runId
    */
   runIdForResult?: string;
+  /**
+   * Parameters for starting the workflow when using Update-With-Start.
+   */
+  workflowStartTypeOrFunc?: string | T;
+  workflowStartOptions?: WorkflowStartOptions<T>;
 }
 
 /**
@@ -828,6 +836,17 @@ export class WorkflowClient extends BaseClient {
         },
       },
     };
+    if (input.options.workflowStartTypeOrFunc) {
+      const { workflowStartTypeOrFunc, workflowStartOptions } = input.options;
+      assertRequiredWorkflowOptions(workflowStartOptions);
+      const workflowType = extractWorkflowType(workflowStartTypeOrFunc);
+      const compiledOptions = compileWorkflowOptions(ensureArgs(workflowStartOptions));
+      return await this._updateWithStartHandler(req, {
+        workflowType,
+        headers: {},
+        options: compiledOptions,
+      });
+    }
 
     // Repeatedly send UpdateWorkflowExecution until update is >= Accepted or >= `waitForStage` (if
     // the server receives a request with an update ID that already exists, it responds with
@@ -845,6 +864,35 @@ export class WorkflowClient extends BaseClient {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       workflowRunId: response.updateRef!.workflowExecution!.runId!,
       outcome: response.outcome ?? undefined,
+    };
+  }
+
+  protected async _updateWithStartHandler(
+    updateRequest: temporal.api.workflowservice.v1.IUpdateWorkflowExecutionRequest,
+    startInput: WorkflowStartInput
+  ): Promise<WorkflowStartUpdateOutput> {
+    const startRequest = await this.createStartWorkflowRequest(startInput);
+    const multiOpReq: temporal.api.workflowservice.v1.IExecuteMultiOperationRequest = {
+      namespace: this.options.namespace,
+      operations: [
+        {
+          startWorkflow: startRequest,
+        },
+        {
+          updateWorkflow: updateRequest,
+        },
+      ],
+    };
+    // TODO: this is naive; follow what Go/Java do regarding retries
+    const multiOpResp = await this.workflowService.executeMultiOperation(multiOpReq);
+    // TODO: order is guaranteed but we could check for startWorkflow / updateWorkflow keys
+    const updateResp = multiOpResp.responses[1]
+      .updateWorkflow as temporal.api.workflowservice.v1.IUpdateWorkflowExecutionResponse;
+
+    return {
+      updateId: updateRequest.request!.meta!.updateId!,
+      workflowRunId: updateResp.updateRef!.workflowExecution!.runId!,
+      outcome: updateResp.outcome ?? undefined,
     };
   }
 
@@ -982,10 +1030,27 @@ export class WorkflowClient extends BaseClient {
    * Used as the final function of the start interceptor chain
    */
   protected async _startWorkflowHandler(input: WorkflowStartInput): Promise<string> {
+    const req = await this.createStartWorkflowRequest(input);
+    const { options: opts, workflowType } = input;
+    try {
+      return (await this.workflowService.startWorkflowExecution(req)).runId;
+    } catch (err: any) {
+      if (err.code === grpcStatus.ALREADY_EXISTS) {
+        throw new WorkflowExecutionAlreadyStartedError(
+          'Workflow execution already started',
+          opts.workflowId,
+          workflowType
+        );
+      }
+      this.rethrowGrpcError(err, 'Failed to start Workflow', { workflowId: opts.workflowId });
+    }
+  }
+
+  protected async createStartWorkflowRequest(input: WorkflowStartInput): Promise<StartWorkflowExecutionRequest> {
     const { options: opts, workflowType, headers } = input;
-    const { identity } = this.options;
-    const req: StartWorkflowExecutionRequest = {
-      namespace: this.options.namespace,
+    const { identity, namespace } = this.options;
+    return {
+      namespace,
       identity,
       requestId: uuid4(),
       workflowId: opts.workflowId,
@@ -1011,18 +1076,6 @@ export class WorkflowClient extends BaseClient {
       cronSchedule: opts.cronSchedule,
       header: { fields: headers },
     };
-    try {
-      return (await this.workflowService.startWorkflowExecution(req)).runId;
-    } catch (err: any) {
-      if (err.code === grpcStatus.ALREADY_EXISTS) {
-        throw new WorkflowExecutionAlreadyStartedError(
-          'Workflow execution already started',
-          opts.workflowId,
-          workflowType
-        );
-      }
-      this.rethrowGrpcError(err, 'Failed to start Workflow', { workflowId: opts.workflowId });
-    }
   }
 
   /**
@@ -1093,12 +1146,14 @@ export class WorkflowClient extends BaseClient {
     firstExecutionRunId,
     interceptors,
     runIdForResult,
+    workflowStartTypeOrFunc: lazyStartWorkflowTypeOrFunc,
+    workflowStartOptions: lazyStartOptions,
     ...resultOptions
-  }: WorkflowHandleOptions): WorkflowHandle<T> {
+  }: WorkflowHandleOptions<T>): WorkflowHandle<T> {
     const _startUpdate = async <Ret, Args extends unknown[]>(
       def: UpdateDefinition<Ret, Args> | string,
       waitForStage: WorkflowUpdateStage,
-      options?: WorkflowUpdateOptions & { args?: Args }
+      options?: WorkflowUpdateOptions<T> & { args?: Args }
     ): Promise<WorkflowUpdateHandle<Ret>> => {
       const next = this._startUpdateHandler.bind(this, waitForStage);
       const fn = composeInterceptors(interceptors, 'startUpdate', next);
@@ -1178,17 +1233,31 @@ export class WorkflowClient extends BaseClient {
       },
       async startUpdate<Ret, Args extends any[]>(
         def: UpdateDefinition<Ret, Args> | string,
-        options: WorkflowUpdateOptions & {
+        options: WorkflowUpdateOptions<T> & {
           args?: Args;
           waitForStage: WorkflowUpdateStage.ACCEPTED;
         }
       ): Promise<WorkflowUpdateHandle<Ret>> {
+        // TODO: I think it's not necessary to set these on WorkflowUpdateOptions; we could pass
+        // them as args to _startUpdate.
+        options = {
+          ...(options || {}),
+          workflowStartTypeOrFunc: lazyStartWorkflowTypeOrFunc,
+          workflowStartOptions: lazyStartOptions,
+        };
         return await _startUpdate(def, options.waitForStage, options);
       },
       async executeUpdate<Ret, Args extends any[]>(
         def: UpdateDefinition<Ret, Args> | string,
-        options?: WorkflowUpdateOptions & { args?: Args }
+        options?: WorkflowUpdateOptions<T> & { args?: Args }
       ): Promise<Ret> {
+        // TODO: I think it's not necessary to set these on WorkflowUpdateOptions; we could pass
+        // them as args to _startUpdate.
+        options = {
+          ...(options || {}),
+          workflowStartTypeOrFunc: lazyStartWorkflowTypeOrFunc,
+          workflowStartOptions: lazyStartOptions,
+        };
         const handle = await _startUpdate(def, WorkflowUpdateStage.COMPLETED, options);
         return await handle.result();
       },

@@ -4,7 +4,7 @@
  * @module
  */
 
-import { Headers, Next } from '@temporalio/common';
+import { Headers, Next, Workflow } from '@temporalio/common';
 import { temporal } from '@temporalio/proto';
 import { CompiledScheduleOptions } from './schedule-types';
 import {
@@ -26,13 +26,13 @@ export interface WorkflowStartInput {
 }
 
 /** Input for WorkflowClientInterceptor.update */
-export interface WorkflowStartUpdateInput {
+export interface WorkflowStartUpdateInput<T extends Workflow = Workflow> {
   readonly updateName: string;
   readonly args: unknown[];
   readonly workflowExecution: WorkflowExecution;
   readonly firstExecutionRunId?: string;
   readonly headers: Headers;
-  readonly options: WorkflowUpdateOptions;
+  readonly options: WorkflowUpdateOptions<T>;
 }
 
 /** Output for WorkflowClientInterceptor.startUpdate */
