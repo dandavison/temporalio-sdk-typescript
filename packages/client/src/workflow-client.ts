@@ -561,6 +561,30 @@ export class WorkflowClient extends BaseClient {
   }
 
   /**
+   * Create a handle for issuing an Update-With-Start request.
+   *
+   * Update-With-Start allows you to send an update to a workflow, while starting the workflow if
+   * necessary.
+   *
+   * @returns a WorkflowHandle
+   */
+  public withStart<T extends Workflow>(
+    workflowTypeOrFunc: string | T,
+    options: WorkflowStartOptions<T>
+    // TODO: return a restricted interface that only supports executeUpdate, startUpdate, etc.
+  ): WorkflowHandle<T> {
+    const { workflowId } = options;
+    const interceptors = this.getOrMakeInterceptors(workflowId);
+    return this._createWorkflowHandle({
+      workflowId,
+      interceptors,
+      followRuns: options.followRuns ?? true,
+      workflowStartTypeOrFunc: workflowTypeOrFunc,
+      workflowStartOptions: options,
+    });
+  }
+
+  /**
    * Sends a Signal to a running Workflow or starts a new one if not already running and immediately Signals it.
    * Useful when you're unsure whether the Workflow has been started.
    *
